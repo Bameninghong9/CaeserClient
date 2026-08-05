@@ -7,6 +7,7 @@ export interface ModData {
   summary: string;
   icon: string;
   platform: 'modrinth' | 'curseforge';
+  version?: string;
 }
 
 export const MOCK_MODS_CURSEFORGE: ModData[] = [

@@ -65,19 +65,7 @@ async fn launch_game(
     let uuid = creds.get("id").and_then(|u| u.as_str()).unwrap_or("dummy_uuid").to_string();
     let access_token = creds.get("access_token").and_then(|u| u.as_str()).unwrap_or("dummy_token").to_string();
     
-    // Open the logs window
-    let window_label = format!("logs_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs());
-    let _window = tauri::WebviewWindowBuilder::new(
-        &app,
-        window_label,
-        tauri::WebviewUrl::App("/?window=logs".into()),
-    )
-    .title("Minecraft Logs")
-    .inner_size(900.0, 600.0)
-    .decorations(false)
-    .center()
-    .build()
-    .map_err(|e| e.to_string())?;
+    // Log window removed per user request
 
     tauri::async_runtime::spawn(async move {
         if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), &version, &loader, &loader_version, &profile_name, &username, &uuid, &access_token).await {
@@ -112,6 +100,7 @@ use tokio::io::AsyncWriteExt;
 
 #[derive(serde::Deserialize)]
 struct ModrinthVersion {
+    version_number: String,
     files: Vec<ModrinthFile>,
 }
 
@@ -130,6 +119,7 @@ struct CurseForgeFileResponse {
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CurseForgeFile {
+    display_name: String,
     download_url: Option<String>,
     file_name: String,
 }
@@ -142,6 +132,7 @@ pub struct ModData {
     pub summary: String,
     pub icon: String,
     pub platform: String,
+    pub version: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -158,6 +149,7 @@ async fn install_mod(
     loader: String,
     profile_name: String,
 ) -> Result<(), String> {
+    let mut mod_info = mod_info;
     let loader_lower = loader.to_lowercase();
     let mod_id = &mod_info.id;
     let platform = &mod_info.platform;
@@ -173,6 +165,8 @@ async fn install_mod(
         let versions: Vec<ModrinthVersion> = res.json().await.map_err(|e| e.to_string())?;
         
         let version = versions.into_iter().next().ok_or_else(|| "No compatible Modrinth version found".to_string())?;
+        
+        mod_info.version = Some(version.version_number.clone());
         
         let primary_file = version.files.iter().find(|f| f.primary).cloned();
         let file = primary_file.or_else(|| version.files.into_iter().next()).ok_or_else(|| "No file found in version".to_string())?;
@@ -196,6 +190,9 @@ async fn install_mod(
         let response: CurseForgeFileResponse = res.json().await.map_err(|e| e.to_string())?;
         
         let file = response.data.into_iter().next().ok_or_else(|| "No compatible CurseForge version found".to_string())?;
+        
+        mod_info.version = Some(file.display_name.clone());
+        
         let download_url = file.download_url.ok_or_else(|| "CurseForge file has no download URL".to_string())?;
         
         (download_url, file.file_name)
@@ -265,7 +262,7 @@ async fn get_installed_mods(profile_name: String) -> Result<InstalledModsRespons
                 if let Ok(file_type) = entry.file_type().await {
                     if file_type.is_file() {
                         let file_name = entry.file_name().to_string_lossy().to_string();
-                        if file_name.ends_with(".jar") {
+                        if file_name.ends_with(".jar") || file_name.ends_with(".jar.disabled") {
                             local_files.push(file_name);
                         }
                     }
@@ -294,8 +291,67 @@ pub fn run() {
             profile_manager::profile_manager::save_profiles,
             auth::get_accounts,
             auth::save_accounts,
-            get_installed_mods
+            get_installed_mods,
+            toggle_mod_file,
+            delete_mod_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+async fn toggle_mod_file(profile_name: String, file_name: String, disable: bool) -> Result<(), String> {
+    let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
+    let mods_dir = std::path::PathBuf::from(appdata)
+        .join("CaeserClient")
+        .join("profiles")
+        .join(&profile_name)
+        .join("mods");
+
+    let old_path = mods_dir.join(&file_name);
+    if !old_path.exists() {
+        return Err("File not found".to_string());
+    }
+
+    let new_name = if disable {
+        if file_name.ends_with(".disabled") { return Ok(()); }
+        format!("{}.disabled", file_name)
+    } else {
+        if !file_name.ends_with(".disabled") { return Ok(()); }
+        file_name.trim_end_matches(".disabled").to_string()
+    };
+
+    let new_path = mods_dir.join(new_name);
+    tokio::fs::rename(old_path, new_path).await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn delete_mod_file(profile_name: String, file_name: String, mod_id: Option<String>) -> Result<(), String> {
+    let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
+    let profile_dir = std::path::PathBuf::from(appdata)
+        .join("CaeserClient")
+        .join("profiles")
+        .join(&profile_name);
+    let mods_dir = profile_dir.join("mods");
+
+    let file_path = mods_dir.join(&file_name);
+    if file_path.exists() {
+        tokio::fs::remove_file(file_path).await.map_err(|e| e.to_string())?;
+    }
+
+    if let Some(id) = mod_id {
+        let metadata_path = profile_dir.join("installed_mods.json");
+        if metadata_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&metadata_path) {
+                if let Ok(mut parsed) = serde_json::from_str::<Vec<ModData>>(&content) {
+                    parsed.retain(|m| m.id != id);
+                    if let Ok(json) = serde_json::to_string_pretty(&parsed) {
+                        let _ = std::fs::write(&metadata_path, json);
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
