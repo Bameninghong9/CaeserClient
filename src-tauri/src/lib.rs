@@ -134,16 +134,33 @@ struct CurseForgeFile {
     file_name: String,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct ModData {
+    pub id: String,
+    pub name: String,
+    pub author: String,
+    pub summary: String,
+    pub icon: String,
+    pub platform: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct InstalledModsResponse {
+    pub rich_mods: Vec<ModData>,
+    pub local_files: Vec<String>,
+}
+
 #[tauri::command]
 async fn install_mod(
     app: AppHandle,
-    mod_id: String,
-    platform: String,
+    mod_info: ModData,
     game_version: String,
     loader: String,
     profile_name: String,
 ) -> Result<(), String> {
     let loader_lower = loader.to_lowercase();
+    let mod_id = &mod_info.id;
+    let platform = &mod_info.platform;
     
     // Resolve Download URL and Filename
     let (download_url, filename) = if platform == "modrinth" {
@@ -188,8 +205,9 @@ async fn install_mod(
 
     // Ensure directory exists
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-    let app_dir = std::path::PathBuf::from(appdata).join(".caeserclient");
-    let mods_dir = app_dir.join("profiles").join(&profile_name).join("mods");
+    let app_dir = std::path::PathBuf::from(appdata).join("CaeserClient");
+    let profile_dir = app_dir.join("profiles").join(&profile_name);
+    let mods_dir = profile_dir.join("mods");
     tokio::fs::create_dir_all(&mods_dir).await.map_err(|e| e.to_string())?;
 
     // Download the file
@@ -201,18 +219,46 @@ async fn install_mod(
         file.write_all(&chunk).await.map_err(|e| e.to_string())?;
     }
     
+    // Save ModData to installed_mods.json
+    let metadata_path = profile_dir.join("installed_mods.json");
+    let mut installed_mods: Vec<ModData> = Vec::new();
+    if metadata_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&metadata_path) {
+            if let Ok(parsed) = serde_json::from_str(&content) {
+                installed_mods = parsed;
+            }
+        }
+    }
+    // Remove if already exists to avoid duplicates
+    installed_mods.retain(|m| m.id != mod_info.id);
+    installed_mods.push(mod_info);
+    if let Ok(json) = serde_json::to_string_pretty(&installed_mods) {
+        let _ = std::fs::write(&metadata_path, json);
+    }
+
     println!("Successfully downloaded {} to {:?}", filename, file_path);
 
     Ok(())
 }
 
 #[tauri::command]
-async fn get_installed_mods(profile_name: String) -> Result<Vec<String>, String> {
+async fn get_installed_mods(profile_name: String) -> Result<InstalledModsResponse, String> {
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-    let app_dir = std::path::PathBuf::from(appdata).join(".caeserclient");
-    let mods_dir = app_dir.join("profiles").join(&profile_name).join("mods");
+    let app_dir = std::path::PathBuf::from(appdata).join("CaeserClient");
+    let profile_dir = app_dir.join("profiles").join(&profile_name);
+    let mods_dir = profile_dir.join("mods");
+    let metadata_path = profile_dir.join("installed_mods.json");
     
-    let mut mods = Vec::new();
+    let mut rich_mods: Vec<ModData> = Vec::new();
+    if metadata_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&metadata_path) {
+            if let Ok(parsed) = serde_json::from_str(&content) {
+                rich_mods = parsed;
+            }
+        }
+    }
+
+    let mut local_files = Vec::new();
     if mods_dir.exists() {
         if let Ok(mut entries) = tokio::fs::read_dir(mods_dir).await {
             while let Ok(Some(entry)) = entries.next_entry().await {
@@ -220,7 +266,7 @@ async fn get_installed_mods(profile_name: String) -> Result<Vec<String>, String>
                     if file_type.is_file() {
                         let file_name = entry.file_name().to_string_lossy().to_string();
                         if file_name.ends_with(".jar") {
-                            mods.push(file_name);
+                            local_files.push(file_name);
                         }
                     }
                 }
@@ -228,7 +274,7 @@ async fn get_installed_mods(profile_name: String) -> Result<Vec<String>, String>
         }
     }
     
-    Ok(mods)
+    Ok(InstalledModsResponse { rich_mods, local_files })
 }
 
 

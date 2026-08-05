@@ -14,16 +14,18 @@ pub mod profile_manager {
         pub ram: f64,
     }
 
-    fn get_profiles_path() -> PathBuf {
-        let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-        let dir = PathBuf::from(appdata).join(".caeserclient");
-        let _ = std::fs::create_dir_all(&dir);
-        dir.join("profiles.json")
+    fn get_profiles_path() -> Result<std::path::PathBuf, String> {
+        let appdata = std::env::var("APPDATA").map_err(|_| "No APPDATA".to_string())?;
+        let path = std::path::PathBuf::from(appdata).join("CaeserClient").join("profiles.json");
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        Ok(path)
     }
 
     #[tauri::command]
     pub async fn get_profiles(_app: AppHandle) -> Result<Vec<Profile>, String> {
-        let path = get_profiles_path();
+        let path = get_profiles_path()?;
         if !path.exists() {
             return Ok(Vec::new());
         }
@@ -37,10 +39,7 @@ pub mod profile_manager {
 
     #[tauri::command]
     pub async fn save_profiles(_app: AppHandle, profiles: Vec<Profile>) -> Result<(), String> {
-        let path = get_profiles_path();
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
+        let path = get_profiles_path()?;
         let data = serde_json::to_string_pretty(&profiles).map_err(|e| e.to_string())?;
         fs::write(&path, data).map_err(|e| e.to_string())?;
         Ok(())

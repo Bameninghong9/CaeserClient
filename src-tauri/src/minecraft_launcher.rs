@@ -21,7 +21,7 @@ pub async fn launch_minecraft(
     let app_dir = std::env::var("APPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from("."))
-        .join(".caeserclient");
+        .join("CaeserClient");
     let mc_dir = app_dir.join("minecraft");
     let profile_dir = app_dir.join("profiles").join(profile_name);
     fs::create_dir_all(&mc_dir).map_err(|e| e.to_string())?;

@@ -84,8 +84,7 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
 
     try {
       await invoke('install_mod', {
-        modId: mod.id,
-        platform: mod.platform,
+        modInfo: mod,
         gameVersion: activeProfile.version,
         loader: activeProfile.loader,
         profileName: activeProfile.name
@@ -110,7 +109,18 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
   useEffect(() => {
     if (activeProfile) {
       invoke('get_installed_mods', { profileName: activeProfile.name })
-        .then((mods: any) => setLocalMods(mods || []))
+        .then((resp: any) => {
+          if (resp && resp.rich_mods) {
+            const modsObj: Record<string, ModData> = {};
+            resp.rich_mods.forEach((m: ModData) => {
+              modsObj[m.id] = m;
+            });
+            setInstalledMods(modsObj);
+          }
+          if (resp && resp.local_files) {
+            setLocalMods(resp.local_files);
+          }
+        })
         .catch(console.error);
     }
   }, [activeProfile]);

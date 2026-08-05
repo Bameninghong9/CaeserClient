@@ -25,16 +25,18 @@ static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
         .unwrap()
 });
 
-fn get_accounts_path() -> PathBuf {
-    let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-    let dir = PathBuf::from(appdata).join(".caeserclient");
-    let _ = fs::create_dir_all(&dir);
-    dir.join("accounts.json")
+fn get_accounts_path() -> Result<std::path::PathBuf, String> {
+    let appdata = std::env::var("APPDATA").map_err(|_| "No APPDATA".to_string())?;
+    let path = std::path::PathBuf::from(appdata).join("CaeserClient").join("accounts.json");
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    Ok(path)
 }
 
 #[tauri::command]
 pub fn get_accounts() -> Result<Vec<Credentials>, String> {
-    let path = get_accounts_path();
+    let path = get_accounts_path()?;
     if !path.exists() {
         return Ok(Vec::new());
     }
@@ -45,7 +47,7 @@ pub fn get_accounts() -> Result<Vec<Credentials>, String> {
 
 #[tauri::command]
 pub fn save_accounts(accounts: Vec<Credentials>) -> Result<(), String> {
-    let path = get_accounts_path();
+    let path = get_accounts_path()?;
     let content = serde_json::to_string_pretty(&accounts).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())?;
     Ok(())
