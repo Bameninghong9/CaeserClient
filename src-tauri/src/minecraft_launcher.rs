@@ -176,6 +176,9 @@ pub async fn launch_minecraft(
     classpath.push(client_jar_path.to_string_lossy().to_string());
     let cp_string = classpath.join(";"); // Windows uses ;
 
+    app.emit("game-log", "[INFO] Downloading assets...".to_string()).unwrap_or(());
+    download_assets(&client, &app, &mc_dir, &version_data).await?;
+
     app.emit("game-log", "[INFO] Launching JVM...".to_string()).unwrap_or(());
 
     // 5. Build Command
@@ -295,5 +298,75 @@ fn extract_natives(zip_path: &Path, extract_to: &Path) -> Result<(), String> {
             }
         }
     }
+    Ok(())
+}
+
+async fn download_assets(client: &Client, app: &AppHandle, mc_dir: &Path, version_data: &Value) -> Result<(), String> {
+    app.emit("game-log", "[INFO] Processing assets (this might take a while on first launch)...").unwrap_or(());
+    
+    let asset_index_obj = version_data.get("assetIndex").ok_or("No assetIndex found")?;
+    let index_id = asset_index_obj["id"].as_str().unwrap();
+    let index_url = asset_index_obj["url"].as_str().unwrap();
+
+    let indexes_dir = mc_dir.join("assets").join("indexes");
+    fs::create_dir_all(&indexes_dir).map_err(|e| e.to_string())?;
+    
+    let index_path = indexes_dir.join(format!("{}.json", index_id));
+    if !index_path.exists() {
+        download_file(client, index_url, &index_path).await?;
+    }
+
+    let index_content = fs::read_to_string(&index_path).map_err(|e| e.to_string())?;
+    let index_json: Value = serde_json::from_str(&index_content).map_err(|e| e.to_string())?;
+
+    let objects = index_json.get("objects").and_then(|o| o.as_object()).ok_or("No objects in asset index")?;
+    
+    let objects_dir = mc_dir.join("assets").join("objects");
+    
+    let mut missing_assets = Vec::new();
+
+    for (_key, value) in objects {
+        if let Some(hash) = value.get("hash").and_then(|h| h.as_str()) {
+            let prefix = &hash[0..2];
+            let asset_dir = objects_dir.join(prefix);
+            let asset_path = asset_dir.join(hash);
+            
+            if !asset_path.exists() {
+                missing_assets.push((hash.to_string(), asset_dir, asset_path));
+            }
+        }
+    }
+
+    if missing_assets.is_empty() {
+        app.emit("game-log", "[INFO] All assets are already downloaded.").unwrap_or(());
+        return Ok(());
+    }
+
+    let total = missing_assets.len();
+    app.emit("game-log", format!("[INFO] Downloading {} missing assets...", total)).unwrap_or(());
+
+    use futures::future::join_all;
+    let chunks: Vec<_> = missing_assets.chunks(50).collect();
+    
+    let mut count = 0;
+    for chunk in chunks {
+        let mut futures = Vec::new();
+        for (hash, dir, path) in chunk {
+            let h = hash.clone();
+            let d = dir.clone();
+            let p = path.clone();
+            let c = client.clone();
+            
+            futures.push(tokio::spawn(async move {
+                fs::create_dir_all(&d).unwrap_or(());
+                let url = format!("https://resources.download.minecraft.net/{}/{}", &h[0..2], h);
+                let _ = download_file(&c, &url, &p).await;
+            }));
+        }
+        join_all(futures).await;
+        count += chunk.len();
+        app.emit("game-log", format!("[INFO] Downloaded {}/{} assets", count, total)).unwrap_or(());
+    }
+
     Ok(())
 }

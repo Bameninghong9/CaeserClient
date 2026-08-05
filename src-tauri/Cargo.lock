@@ -4492,6 +4492,7 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "flate2",
+ "futures",
  "jsonwebtoken",
  "log",
  "machineid-rs",
