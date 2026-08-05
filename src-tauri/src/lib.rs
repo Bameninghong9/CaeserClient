@@ -207,7 +207,7 @@ async fn install_mod(
 }
 
 #[tauri::command]
-pub async fn get_installed_mods(profile_name: String) -> Result<Vec<String>, String> {
+async fn get_installed_mods(profile_name: String) -> Result<Vec<String>, String> {
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
     let app_dir = std::path::PathBuf::from(appdata).join(".caeserclient");
     let mods_dir = app_dir.join("profiles").join(&profile_name).join("mods");
