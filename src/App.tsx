@@ -5,7 +5,6 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import './index.css';
 import Home from './Home';
 import Profiles from './Profiles';
-import Settings from './Settings';
 import Logs from './Logs';
 
 export interface Credentials {
@@ -30,14 +29,11 @@ function Titlebar({
   onSelectAccount: (id: string) => void
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
   const appWindow = getCurrentWindow();
 
   useEffect(() => {
-    appWindow.isMaximized().then(setIsMaximized);
     const unlisten = appWindow.onResized(async () => {
       const maximized = await appWindow.isMaximized();
-      setIsMaximized(maximized);
       if (maximized) {
         document.body.classList.add('maximized');
       } else {
