@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Logs</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Courier New', monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Custom Titlebar */
+        .titlebar {
+            height: 30px;
+            background: #2d2d2d;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            /* Make it draggable */
+            -webkit-app-region: drag;
+        }
+
+        .titlebar-text {
+            font-size: 13px;
+            font-weight: bold;
+            color: #cccccc;
+        }
+
+        .titlebar-controls {
+            display: flex;
+            gap: 10px;
+            -webkit-app-region: no-drag;
+        }
+
+        .titlebar-btn {
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .titlebar-btn:hover {
+            color: white;
+        }
+
+        .titlebar-btn.close:hover {
+            color: #ff5f56;
+        }
+
+        /* Log Content */
+        #log-container {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .log-line {
+            margin: 0;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .log-info { color: #4fc1ff; }
+        .log-warn { color: #d7ba7d; }
+        .log-error { color: #f44747; }
+        .log-success { color: #b5cea8; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #424242; 
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4f4f4f; 
+        }
+    </style>
+</head>
+<body>
+    <div class="titlebar">
+        <div class="titlebar-text">Minecraft Live Logs</div>
+        <div class="titlebar-controls">
+            <button class="titlebar-btn" id="btn-minimize">_</button>
+            <button class="titlebar-btn" id="btn-maximize">☐</button>
+            <button class="titlebar-btn close" id="btn-close">X</button>
+        </div>
+    </div>
+    
+    <div id="log-container">
+        <div class="log-line log-info">CaeserClient Log Console initialized.</div>
+    </div>
+
+    <!-- Load Tauri API -->
+    <script>
+        const { listen } = window.__TAURI__.event;
+        const { getCurrentWebviewWindow } = window.__TAURI__.webviewWindow;
+
+        const appWindow = getCurrentWebviewWindow();
+        
+        // Window Controls
+        document.getElementById('btn-minimize').addEventListener('click', () => appWindow.minimize());
+        document.getElementById('btn-maximize').addEventListener('click', () => appWindow.toggleMaximize());
+        document.getElementById('btn-close').addEventListener('click', () => appWindow.close());
+
+        const logContainer = document.getElementById('log-container');
+
+        function appendLog(message) {
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            
+            // Basic color coding
+            if (message.includes('[WARN]')) {
+                line.classList.add('log-warn');
+            } else if (message.includes('[ERROR]') || message.toLowerCase().includes('exception')) {
+                line.classList.add('log-error');
+            } else if (message.includes('[INFO]')) {
+                line.classList.add('log-info');
+            } else {
+                line.style.color = '#cccccc';
+            }
+            
+            line.textContent = message;
+            logContainer.appendChild(line);
+            
+            // Auto-scroll to bottom
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Listen for log events
+        listen('game-log', (event) => {
+            appendLog(event.payload);
+        });
+        
+        // Listen for exit
+        listen('game-exit', () => {
+            appendLog("\n[SYSTEM] Game exited. This window can now be closed.");
+        });
+    </script>
+</body>
+</html>
