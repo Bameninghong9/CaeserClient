@@ -85,6 +85,13 @@ export default function Logs() {
   });
   const [following, setFollowing] = useState(true);
   
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      getCurrentWindow().show();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+  
   const logEndRef = useRef<HTMLDivElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
   const appWindow = getCurrentWindow();

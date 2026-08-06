@@ -255,6 +255,14 @@ function App() {
   const activeCreds = accounts.find(a => a.id === activeAccountId) || null;
 
   useEffect(() => {
+    // Show window when the UI is fully loaded and ready
+    const timer = setTimeout(() => {
+      getCurrentWindow().show();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     const creds = accounts.find(a => a.id === activeAccountId);
     if (creds) {
       fetchActiveSkinUrl(creds);
