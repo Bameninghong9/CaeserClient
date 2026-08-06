@@ -320,7 +320,7 @@ function LocalSkinCard({ skin, onApply, onDelete, loading }: { skin: LocalSkin, 
   
   useEffect(() => {
     invoke<string>('get_local_skin_base64', { fileName: skin.file_name })
-      .then(b64 => setSkinBase64(`data:image/png;base64,${b64}`))
+      .then(b64 => setSkinBase64(b64))
       .catch(console.error);
   }, [skin.file_name]);
   
