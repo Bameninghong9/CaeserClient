@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { Credentials } from './App';
+import { SkinViewer, IdleAnimation } from 'skinview3d';
 
 export interface LocalSkin {
   id: string;
@@ -13,6 +15,15 @@ export default function Skins({ activeCreds }: { activeCreds: Credentials | null
   const [loading, setLoading] = useState(false);
   const [activeSkinInfo, setActiveSkinInfo] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [promptInput, setPromptInput] = useState('');
+  const [modalConfig, setModalConfig] = useState<{
+    type: 'alert' | 'prompt' | 'confirm';
+    title: string;
+    message: string;
+    defaultValue?: string;
+    onConfirm: (val?: string) => void;
+    onCancel?: () => void;
+  } | null>(null);
 
   const fetchLocalSkins = async () => {
     try {
@@ -47,20 +58,38 @@ export default function Skins({ activeCreds }: { activeCreds: Credentials | null
       reader.onload = async (event) => {
         const base64Data = event.target?.result as string;
         if (base64Data) {
-          try {
-            setLoading(true);
-            const newName = prompt("Name für den Skin eingeben:", file.name.split('.')[0]) || "Neuer Skin";
-            await invoke('add_local_skin', { name: newName, base64Data });
-            await fetchLocalSkins();
-          } catch (error) {
-            console.error("Error adding skin", error);
-            alert("Fehler beim Hinzufügen des Skins: " + error);
-          } finally {
-            setLoading(false);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = "";
+          const defaultName = file.name.split('.')[0];
+          setPromptInput(defaultName);
+          setModalConfig({
+            type: 'prompt',
+            title: 'Skin hinzufügen',
+            message: 'Name für den Skin eingeben:',
+            defaultValue: defaultName,
+            onConfirm: async (newName) => {
+              setModalConfig(null);
+              if (!newName) newName = "Neuer Skin";
+              try {
+                setLoading(true);
+                await invoke('add_local_skin', { name: newName, base64Data });
+                await fetchLocalSkins();
+              } catch (error) {
+                console.error("Error adding skin", error);
+                setModalConfig({
+                  type: 'alert',
+                  title: 'Fehler',
+                  message: 'Fehler beim Hinzufügen des Skins: ' + error,
+                  onConfirm: () => setModalConfig(null)
+                });
+              } finally {
+                setLoading(false);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }
+            },
+            onCancel: () => {
+              setModalConfig(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
             }
-          }
+          });
         }
       };
       reader.readAsDataURL(file);
@@ -76,24 +105,42 @@ export default function Skins({ activeCreds }: { activeCreds: Credentials | null
         fileName: skin.file_name, 
         variant: "classic" // For now hardcode classic, could add UI for slim
       });
-      alert("Skin erfolgreich angewendet!");
+      setModalConfig({
+        type: 'alert',
+        title: 'Erfolg',
+        message: 'Skin erfolgreich angewendet!',
+        onConfirm: () => setModalConfig(null)
+      });
       await fetchActiveSkin();
     } catch (error) {
       console.error("Error applying skin", error);
-      alert("Fehler beim Anwenden des Skins: " + error);
+      setModalConfig({
+        type: 'alert',
+        title: 'Fehler',
+        message: 'Fehler beim Anwenden des Skins: ' + error,
+        onConfirm: () => setModalConfig(null)
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteSkin = async (id: string) => {
-    if (!confirm("Soll dieser Skin wirklich gelöscht werden?")) return;
-    try {
-      await invoke('remove_local_skin', { id });
-      await fetchLocalSkins();
-    } catch (error) {
-      console.error("Error removing skin", error);
-    }
+    setModalConfig({
+      type: 'confirm',
+      title: 'Skin löschen',
+      message: 'Soll dieser Skin wirklich gelöscht werden?',
+      onConfirm: async () => {
+        setModalConfig(null);
+        try {
+          await invoke('remove_local_skin', { id });
+          await fetchLocalSkins();
+        } catch (error) {
+          console.error("Error removing skin", error);
+        }
+      },
+      onCancel: () => setModalConfig(null)
+    });
   };
 
   // We can render a preview using Crafatar API or similar, but for local skins 
@@ -162,18 +209,109 @@ export default function Skins({ activeCreds }: { activeCreds: Credentials | null
           />
         ))}
       </div>
+
+      {modalConfig && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--surface-color)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            padding: '30px',
+            width: '400px',
+            maxWidth: '90%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+          }}>
+            <h2 style={{ margin: '0 0 15px 0', fontSize: '20px' }}>{modalConfig.title}</h2>
+            <p style={{ color: '#94a3b8', margin: '0 0 25px 0' }}>{modalConfig.message}</p>
+            
+            {modalConfig.type === 'prompt' && (
+              <input 
+                type="text" 
+                defaultValue={modalConfig.defaultValue}
+                onChange={(e) => setPromptInput(e.target.value)}
+                autoFocus
+                style={{
+                  width: '100%', padding: '10px', marginBottom: '20px', 
+                  background: 'rgba(0,0,0,0.2)', border: '1px solid #3b82f6', 
+                  borderRadius: '4px', color: 'white', boxSizing: 'border-box'
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    modalConfig.onConfirm(promptInput || modalConfig.defaultValue);
+                  }
+                }}
+              />
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
+              {(modalConfig.type === 'confirm' || modalConfig.type === 'prompt') && (
+                <button 
+                  className="btn" 
+                  style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }} 
+                  onClick={() => {
+                    if (modalConfig.onCancel) modalConfig.onCancel();
+                    setModalConfig(null);
+                  }}
+                >
+                  Abbrechen
+                </button>
+              )}
+              <button 
+                className="btn" 
+                style={{ background: modalConfig.type === 'confirm' ? 'var(--danger-color)' : 'var(--accent-color)' }} 
+                onClick={() => modalConfig.onConfirm(modalConfig.type === 'prompt' ? (promptInput || modalConfig.defaultValue) : undefined)}
+              >
+                {modalConfig.type === 'confirm' ? 'Löschen' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
 
 function LocalSkinCard({ skin, onApply, onDelete, loading }: { skin: LocalSkin, onApply: () => void, onDelete: () => void, loading: boolean }) {
   const [imgData, setImgData] = useState<string>('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const viewerRef = useRef<SkinViewer | null>(null);
 
   useEffect(() => {
     invoke<string>('get_local_skin_base64', { fileName: skin.file_name })
       .then(setImgData)
       .catch(console.error);
   }, [skin.file_name]);
+
+  useEffect(() => {
+    if (imgData && canvasRef.current) {
+      if (!viewerRef.current) {
+        viewerRef.current = new SkinViewer({
+          canvas: canvasRef.current,
+          width: 150,
+          height: 150,
+          skin: imgData
+        });
+        viewerRef.current.animation = new IdleAnimation();
+      } else {
+        viewerRef.current.loadSkin(imgData);
+      }
+    }
+    return () => {
+      if (viewerRef.current) {
+        viewerRef.current.dispose();
+        viewerRef.current = null;
+      }
+    };
+  }, [imgData]);
 
   return (
     <div style={{ 
@@ -197,9 +335,8 @@ function LocalSkinCard({ skin, onApply, onDelete, loading }: { skin: LocalSkin, 
         justifyContent: 'center',
         overflow: 'hidden'
       }}>
-        {/* We just show the raw texture, since doing a local 3D render requires extra libraries */}
         {imgData ? (
-          <img src={imgData} alt={skin.name} style={{ width: '64px', imageRendering: 'pixelated' }} />
+          <canvas ref={canvasRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         ) : (
           <div style={{ width: '40px', height: '40px', border: '2px solid rgba(255,255,255,0.1)', borderRadius: '50%', borderTopColor: '#3b82f6', animation: 'spin 1s linear infinite' }}></div>
         )}
