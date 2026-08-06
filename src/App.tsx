@@ -123,6 +123,13 @@ function Sidebar({ activeView, onViewChange }: { activeView: string, onViewChang
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
         Profile
       </div>
+      <div 
+        className={`nav-item ${activeView === 'skins' ? 'active' : ''}`}
+        onClick={() => onViewChange('skins')}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        Skins
+      </div>
     </div>
   );
 }
@@ -132,7 +139,15 @@ function App() {
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeView, setActiveView] = useState('home');
+  const [resetTrigger, setResetTrigger] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const handleViewChange = (view: string) => {
+    setActiveView(view);
+    if (view === 'profiles') {
+      setResetTrigger(prev => prev + 1);
+    }
+  };
 
   const isLogsWindow = window.location.search.includes('window=logs');
   
@@ -269,9 +284,18 @@ function App() {
         onSelectAccount={setActiveAccountId}
       />
       <div className="app-layout animate-fade-in">
-        <Sidebar activeView={activeView} onViewChange={setActiveView} />
-        {activeView === 'home' && <Home activeCreds={activeCreds} />}
-        {activeView === 'profiles' && <Profiles activeCreds={activeCreds} />}
+        <Sidebar activeView={activeView} onViewChange={handleViewChange} />
+        
+        <div className="content-area">
+          {activeView === 'home' && <Home activeCreds={activeCreds} />}
+          {activeView === 'profiles' && <Profiles activeCreds={activeCreds} resetTrigger={resetTrigger} />}
+          {activeView === 'skins' && (
+            <div className="main-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
+              <h2>Skins</h2>
+              <p>Skin Manager coming soon...</p>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

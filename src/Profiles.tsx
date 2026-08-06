@@ -13,7 +13,7 @@ export interface Profile {
   ram: number;
 }
 
-export default function Profiles({ activeCreds }: { activeCreds: Credentials | null }) {
+export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: Credentials | null, resetTrigger?: number }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showWizard, setShowWizard] = useState(false);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
@@ -26,6 +26,13 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [cachedVersions, setCachedVersions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (resetTrigger !== undefined) {
+      setActiveProfile(null);
+      setShowModBrowser(false);
+    }
+  }, [resetTrigger]);
 
   // Load profiles and versions on mount
   useEffect(() => {
@@ -425,10 +432,6 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
           />
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            IMPORTIEREN
-          </button>
           <button className="btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase' }} onClick={() => setShowWizard(true)}>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px'}}><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             ERSTELLEN
