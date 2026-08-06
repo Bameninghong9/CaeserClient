@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
-export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (profile: any) => void, onCancel: () => void }) {
+export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: { cachedVersions: string[], onComplete: (profile: any) => void, onCancel: () => void }) {
   const [step, setStep] = useState(1);
-  const [versions, setVersions] = useState<string[]>([]);
+  const [versions, setVersions] = useState<string[]>(cachedVersions);
   const [versionSearch, setVersionSearch] = useState('');
-  const [version, setVersion] = useState('');
+  const [version, setVersion] = useState(cachedVersions.length > 0 ? cachedVersions[0] : '');
   const [loader, setLoader] = useState('Vanilla');
   const [name, setName] = useState('');
   const [ram, setRam] = useState(4);
 
   useEffect(() => {
-    invoke<string[]>('get_versions').then((v) => {
-      let filtered = v.filter(ver => !ver.includes('w') && !ver.includes('pre') && !ver.includes('rc') && !ver.includes('Alpha') && !ver.includes('Beta'));
-      filtered.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
-      setVersions(filtered);
-      if (filtered.length > 0) setVersion(filtered[0]);
-    }).catch(console.error);
-  }, []);
+    // If cachedVersions was empty initially but gets updated (though it shouldn't be, it's preloaded)
+    if (versions.length === 0 && cachedVersions.length > 0) {
+      setVersions(cachedVersions);
+      if (!version) setVersion(cachedVersions[0]);
+    }
+  }, [cachedVersions]);
 
   const handleNext = () => {
     if (step === 1 && !version) return;

@@ -25,14 +25,23 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
   const [downloadingMods, setDownloadingMods] = useState<Record<string, boolean>>({});
 
   const [isLaunching, setIsLaunching] = useState(false);
+  const [cachedVersions, setCachedVersions] = useState<string[]>([]);
 
-  // Load profiles on mount
+  // Load profiles and versions on mount
   useEffect(() => {
     invoke<Profile[]>('get_profiles')
       .then(loadedProfiles => {
         setProfiles(loadedProfiles);
       })
       .catch(e => console.error("Failed to load profiles:", e));
+
+    invoke<string[]>('get_versions')
+      .then(v => {
+        let filtered = v.filter(ver => !ver.includes('w') && !ver.includes('pre') && !ver.includes('rc') && !ver.includes('Alpha') && !ver.includes('Beta'));
+        filtered.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
+        setCachedVersions(filtered);
+      })
+      .catch(e => console.error("Failed to preload versions:", e));
   }, []);
 
   const handleCreateProfile = (profile: Profile) => {
@@ -448,7 +457,7 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
 
       {showWizard && (
         <div className="custom-modal-overlay">
-          <ProfileWizard onComplete={handleCreateProfile} onCancel={() => setShowWizard(false)} />
+          <ProfileWizard cachedVersions={cachedVersions} onComplete={handleCreateProfile} onCancel={() => setShowWizard(false)} />
         </div>
       )}
     </div>
