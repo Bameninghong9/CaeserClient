@@ -9,6 +9,7 @@ use zip::ZipArchive;
 
 pub async fn launch_minecraft(
     app: AppHandle,
+    instance_id: String,
     version: &str,
     loader: &str,
     loader_version: &str,
@@ -17,7 +18,19 @@ pub async fn launch_minecraft(
     uuid: &str,
     access_token: &str,
 ) -> Result<(), String> {
+    let _ = app.emit("instance-started", serde_json::json!({
+        "instance_id": instance_id,
+        "profile_name": profile_name,
+        "username": username,
+        "start_time": chrono::Utc::now().to_rfc3339()
+    }));
     let client = Client::new();
+    let emit_log = |app: &AppHandle, id: &str, msg: String| {
+        let _ = app.emit("game-log", serde_json::json!({
+            "instance_id": id,
+            "line": msg
+        }));
+    };
     let app_dir = std::env::var("APPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from("."))
@@ -27,7 +40,7 @@ pub async fn launch_minecraft(
     fs::create_dir_all(&mc_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&profile_dir).map_err(|e| e.to_string())?;
 
-    app.emit("game-log", format!("[INFO] Resolving version {} (Loader: {})...", version, loader)).unwrap_or(());
+    emit_log(&app, &instance_id, format!("[INFO] Resolving version {} (Loader: {})...", version, loader));
 
     // 1. Fetch version manifest
     let manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
@@ -39,7 +52,7 @@ pub async fn launch_minecraft(
     let version_url = version_entry["url"].as_str().unwrap();
 
     // 2. Fetch specific version json (Vanilla)
-    app.emit("game-log", "[INFO] Fetching Vanilla version data...".to_string()).unwrap_or(());
+    emit_log(&app, &instance_id, "[INFO] Fetching Vanilla version data...".to_string());
     let version_data: Value = client.get(version_url).send().await.map_err(|e| e.to_string())?.json().await.map_err(|e| e.to_string())?;
 
     // Fetch Fabric profile if loader is fabric
@@ -49,7 +62,7 @@ pub async fn launch_minecraft(
         
         // Dynamically fetch latest loader version if not provided or if it's the hardcoded old one
         if actual_loader_version.is_empty() || actual_loader_version == "0.16.2" {
-            app.emit("game-log", format!("[INFO] Resolving latest Fabric loader for {}...", version)).unwrap_or(());
+            emit_log(&app, &instance_id, format!("[INFO] Resolving latest Fabric loader for {}...", version));
             let meta_url = format!("https://meta.fabricmc.net/v2/versions/loader/{}", version);
             if let Ok(res) = client.get(&meta_url).send().await {
                 if let Ok(json) = res.json::<Value>().await {
@@ -57,7 +70,7 @@ pub async fn launch_minecraft(
                         if let Some(latest) = versions.first() {
                             if let Some(lv) = latest.get("loader").and_then(|l| l.get("version")).and_then(|v| v.as_str()) {
                                 actual_loader_version = lv.to_string();
-                                app.emit("game-log", format!("[INFO] Auto-resolved latest Fabric loader: {}", actual_loader_version)).unwrap_or(());
+                                emit_log(&app, &instance_id, format!("[INFO] Auto-resolved latest Fabric loader: {}", actual_loader_version));
                             }
                         }
                     }
@@ -65,7 +78,7 @@ pub async fn launch_minecraft(
             }
         }
 
-        app.emit("game-log", format!("[INFO] Fetching Fabric profile {}...", actual_loader_version)).unwrap_or(());
+        emit_log(&app, &instance_id, format!("[INFO] Fetching Fabric profile {}...", actual_loader_version));
         let fabric_url = format!("https://meta.fabricmc.net/v2/versions/loader/{}/{}/profile/json", version, actual_loader_version);
         let res = client.get(&fabric_url).send().await;
         if let Ok(response) = res {
@@ -82,7 +95,7 @@ pub async fn launch_minecraft(
             fs::create_dir_all(parent).unwrap_or(());
         }
         let client_dl_url = version_data["downloads"]["client"]["url"].as_str().unwrap();
-        app.emit("game-log", "[INFO] Downloading client JAR...".to_string()).unwrap_or(());
+        emit_log(&app, &instance_id, "[INFO] Downloading client JAR...".to_string());
         download_file(&client, client_dl_url, &client_jar_path).await?;
     }
 
@@ -93,7 +106,7 @@ pub async fn launch_minecraft(
 
     let mut classpath = Vec::new();
 
-    app.emit("game-log", "[INFO] Processing Vanilla libraries...".to_string()).unwrap_or(());
+    emit_log(&app, &instance_id, "[INFO] Processing Vanilla libraries...".to_string());
     if let Some(libraries) = version_data["libraries"].as_array() {
         for lib in libraries {
             let rules = lib.get("rules").and_then(|r| r.as_array());
@@ -141,7 +154,7 @@ pub async fn launch_minecraft(
 
     // Process Fabric Libraries
     if let Some(ref fabric) = fabric_data {
-        app.emit("game-log", "[INFO] Processing Fabric libraries...".to_string()).unwrap_or(());
+        emit_log(&app, &instance_id, "[INFO] Processing Fabric libraries...".to_string());
         if let Some(libraries) = fabric["libraries"].as_array() {
             for lib in libraries {
                 if let Some(name) = lib.get("name").and_then(|n| n.as_str()) {
@@ -176,10 +189,10 @@ pub async fn launch_minecraft(
     classpath.push(client_jar_path.to_string_lossy().to_string());
     let cp_string = classpath.join(";"); // Windows uses ;
 
-    app.emit("game-log", "[INFO] Downloading assets...".to_string()).unwrap_or(());
-    download_assets(&client, &app, &mc_dir, &version_data).await?;
+    emit_log(&app, &instance_id, "[INFO] Downloading assets...".to_string());
+    download_assets(&client, &app, &instance_id, &mc_dir, &version_data).await?;
 
-    app.emit("game-log", "[INFO] Launching JVM...".to_string()).unwrap_or(());
+    emit_log(&app, &instance_id, "[INFO] Launching JVM...".to_string());
 
     // 5. Build Command
     let main_class = if let Some(ref fabric) = fabric_data {
@@ -232,13 +245,14 @@ pub async fn launch_minecraft(
     let shared_encoder = std::sync::Arc::new(std::sync::Mutex::new(encoder));
 
     let app_clone1 = app.clone();
+    let i_id1 = instance_id.clone();
     let enc1 = shared_encoder.clone();
     tauri::async_runtime::spawn(async move {
         use std::io::{BufRead, BufReader, Write};
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
             if let Ok(l) = line {
-                let _ = app_clone1.emit("game-log", &l);
+                let _ = app_clone1.emit("game-log", serde_json::json!({ "instance_id": i_id1, "line": l }));
                 if let Ok(mut enc) = enc1.lock() {
                     let _ = writeln!(enc, "{}", l);
                 }
@@ -247,13 +261,14 @@ pub async fn launch_minecraft(
     });
 
     let app_clone2 = app.clone();
+    let i_id2 = instance_id.clone();
     let enc2 = shared_encoder.clone();
     tauri::async_runtime::spawn(async move {
         use std::io::{BufRead, BufReader, Write};
         let reader = BufReader::new(stderr);
         for line in reader.lines() {
             if let Ok(l) = line {
-                let _ = app_clone2.emit("game-log", format!("[ERROR] {}", l));
+                let _ = app_clone2.emit("game-log", serde_json::json!({ "instance_id": i_id2, "line": format!("[ERROR] {}", l) }));
                 if let Ok(mut enc) = enc2.lock() {
                     let _ = writeln!(enc, "[ERROR] {}", l);
                 }
@@ -264,7 +279,7 @@ pub async fn launch_minecraft(
     let enc3 = shared_encoder.clone();
     tauri::async_runtime::spawn(async move {
         let _ = child.wait();
-        let _ = app.emit("game-exit", ());
+        let _ = app.emit("instance-stopped", serde_json::json!({ "instance_id": instance_id }));
         if let Ok(mut enc) = enc3.lock() {
             let _ = enc.try_finish();
         }
@@ -323,8 +338,8 @@ fn extract_natives(zip_path: &Path, extract_to: &Path) -> Result<(), String> {
     Ok(())
 }
 
-async fn download_assets(client: &Client, app: &AppHandle, mc_dir: &Path, version_data: &Value) -> Result<(), String> {
-    app.emit("game-log", "[INFO] Processing assets (this might take a while on first launch)...").unwrap_or(());
+async fn download_assets(client: &Client, app: &AppHandle, instance_id: &str, mc_dir: &Path, version_data: &Value) -> Result<(), String> {
+    let _ = app.emit("game-log", serde_json::json!({ "instance_id": instance_id, "line": "[INFO] Processing assets (this might take a while on first launch)..." }));
     
     let asset_index_obj = version_data.get("assetIndex").ok_or("No assetIndex found")?;
     let index_id = asset_index_obj["id"].as_str().unwrap();
@@ -360,12 +375,12 @@ async fn download_assets(client: &Client, app: &AppHandle, mc_dir: &Path, versio
     }
 
     if missing_assets.is_empty() {
-        app.emit("game-log", "[INFO] All assets are already downloaded.").unwrap_or(());
+        let _ = app.emit("game-log", serde_json::json!({ "instance_id": instance_id, "line": "[INFO] All assets are already downloaded." }));
         return Ok(());
     }
 
     let total = missing_assets.len();
-    app.emit("game-log", format!("[INFO] Downloading {} missing assets...", total)).unwrap_or(());
+    let _ = app.emit("game-log", serde_json::json!({ "instance_id": instance_id, "line": format!("[INFO] Downloading {} missing assets...", total) }));
 
     use futures::future::join_all;
     let chunks: Vec<_> = missing_assets.chunks(50).collect();
@@ -387,7 +402,7 @@ async fn download_assets(client: &Client, app: &AppHandle, mc_dir: &Path, versio
         }
         join_all(futures).await;
         count += chunk.len();
-        app.emit("game-log", format!("[INFO] Downloaded {}/{} assets", count, total)).unwrap_or(());
+        let _ = app.emit("game-log", serde_json::json!({ "instance_id": instance_id, "line": format!("[INFO] Downloaded {}/{} assets", count, total) }));
     }
 
     Ok(())

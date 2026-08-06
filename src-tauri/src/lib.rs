@@ -67,25 +67,40 @@ async fn launch_game(
     
     // Log window removed per user request
 
+    let instance_id = uuid::Uuid::new_v4().simple().to_string();
+
     // Open log window
-    let window_label = format!("logs_{}", uuid::Uuid::new_v4().simple());
-    if let Err(e) = tauri::WebviewWindowBuilder::new(
-        &app,
-        &window_label,
-        tauri::WebviewUrl::App("index.html?window=logs".into())
-    )
-    .title("Minecraft Logs")
-    .inner_size(900.0, 600.0)
-    .decorations(false)
-    .transparent(true)
-    .center()
-    .build() {
-        println!("Failed to create log window: {}", e);
+    let window_label = "logs_window";
+    if let Some(win) = app.get_webview_window(window_label) {
+        let _ = win.show();
+        let _ = win.set_focus();
+    } else {
+        if let Err(e) = tauri::WebviewWindowBuilder::new(
+            &app,
+            window_label,
+            tauri::WebviewUrl::App("index.html?window=logs".into())
+        )
+        .title("Minecraft Logs")
+        .inner_size(1050.0, 700.0)
+        .decorations(false)
+        .transparent(true)
+        .center()
+        .build() {
+            println!("Failed to create log window: {}", e);
+        }
     }
 
+    let instance_id_clone = instance_id.clone();
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), &version, &loader, &loader_version, &profile_name, &username, &uuid, &access_token).await {
-            let _ = app.emit("game-log", format!("[ERROR] Failed to launch: {}", e));
+        // Delay to ensure the log window's React frontend has time to mount and register event listeners.
+        // Otherwise, initial events (like instance-started) will be lost if the window was just created.
+        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+
+        if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), instance_id_clone, &version, &loader, &loader_version, &profile_name, &username, &uuid, &access_token).await {
+            let _ = app.emit("game-log", serde_json::json!({
+                "instance_id": "ERROR",
+                "line": format!("[ERROR] Failed to launch: {}", e)
+            }));
         }
     });
     
