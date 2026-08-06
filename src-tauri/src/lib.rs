@@ -330,6 +330,7 @@ pub fn run() {
             skin_manager::get_local_skins,
             skin_manager::add_local_skin,
             skin_manager::remove_local_skin,
+            skin_manager::update_local_skin,
             skin_manager::get_local_skin_base64,
             skin_manager::get_user_skin_data,
             skin_manager::apply_skin

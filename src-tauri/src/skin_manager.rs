@@ -6,6 +6,7 @@ pub struct LocalSkin {
     pub id: String,
     pub name: String,
     pub file_name: String,
+    pub variant: Option<String>,
 }
 
 fn get_skins_dir() -> Result<PathBuf, String> {
@@ -57,6 +58,7 @@ pub async fn add_local_skin(name: String, base64_data: String) -> Result<LocalSk
         id: id.clone(),
         name,
         file_name,
+        variant: Some("classic".to_string()),
     };
     
     skins.push(skin.clone());
@@ -77,6 +79,22 @@ pub async fn remove_local_skin(id: String) -> Result<(), String> {
         let file_path = dir.join(&skin.file_name);
         
         let _ = tokio::fs::remove_file(file_path).await; // ignore if file doesn't exist
+        
+        let path = get_skins_json_path()?;
+        let json = serde_json::to_string_pretty(&skins).map_err(|e| e.to_string())?;
+        tokio::fs::write(path, json).await.map_err(|e| e.to_string())?;
+    }
+    
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn update_local_skin(id: String, name: String, variant: String) -> Result<(), String> {
+    let mut skins = get_local_skins().await?;
+    if let Some(skin) = skins.iter_mut().find(|s| s.id == id) {
+        skin.name = name;
+        skin.variant = Some(variant);
         
         let path = get_skins_json_path()?;
         let json = serde_json::to_string_pretty(&skins).map_err(|e| e.to_string())?;

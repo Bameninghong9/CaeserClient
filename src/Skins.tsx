@@ -8,6 +8,7 @@ export interface LocalSkin {
   id: string;
   name: string;
   file_name: string;
+  variant?: string;
 }
 
 export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Credentials | null, onSkinChanged?: () => void }) {
@@ -17,11 +18,12 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [promptInput, setPromptInput] = useState('');
   const [modalConfig, setModalConfig] = useState<{
-    type: 'alert' | 'prompt' | 'confirm';
+    type: 'alert' | 'prompt' | 'confirm' | 'editSkin';
     title: string;
     message: string;
     defaultValue?: string;
-    onConfirm: (val?: string) => void;
+    skinToEdit?: LocalSkin;
+    onConfirm: (val?: any) => void;
     onCancel?: () => void;
   } | null>(null);
 
@@ -141,7 +143,7 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
       await invoke('apply_skin', { 
         accessToken: activeCreds.access_token, 
         fileName: skin.file_name, 
-        variant: "classic" // For now hardcode classic, could add UI for slim
+        variant: skin.variant || "classic"
       });
       setModalConfig({
         type: 'alert',
@@ -240,6 +242,31 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
             skin={skin} 
             onApply={() => handleApplySkin(skin)} 
             onDelete={() => handleDeleteSkin(skin.id)} 
+            onEdit={() => {
+              setModalConfig({
+                type: 'editSkin',
+                title: 'Skin bearbeiten',
+                message: 'Passe den Skin an:',
+                skinToEdit: skin,
+                onConfirm: async (updates) => {
+                  setModalConfig(null);
+                  try {
+                    setLoading(true);
+                    await invoke('update_local_skin', {
+                      id: skin.id,
+                      name: updates.name,
+                      variant: updates.variant
+                    });
+                    await fetchLocalSkins();
+                  } catch (e) {
+                    console.error("Failed to update skin", e);
+                  } finally {
+                    setLoading(false);
+                  }
+                },
+                onCancel: () => setModalConfig(null)
+              });
+            }}
             loading={loading} 
           />
         ))}
@@ -285,9 +312,14 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
                 }}
               />
             )}
+            {modalConfig.type === 'editSkin' && modalConfig.skinToEdit && (() => {
+              // We need local state for the edit form inside the modal
+              // We'll extract this to a small inline component for state management
+              return <EditSkinForm skin={modalConfig.skinToEdit} onConfirm={modalConfig.onConfirm} onCancel={() => { if (modalConfig.onCancel) modalConfig.onCancel(); setModalConfig(null); }} />;
+            })()}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
-              {(modalConfig.type === 'confirm' || modalConfig.type === 'prompt') && (
+              {(modalConfig.type === 'confirm' || modalConfig.type === 'prompt' || modalConfig.type === 'alert') && (
                 <button 
                   className="btn" 
                   style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }} 
@@ -296,16 +328,26 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
                     setModalConfig(null);
                   }}
                 >
-                  Abbrechen
+                  {modalConfig.type === 'alert' ? 'OK' : 'Abbrechen'}
                 </button>
               )}
-              <button 
-                className="btn" 
-                style={{ background: modalConfig.type === 'confirm' ? 'var(--danger-color)' : 'var(--accent-color)' }} 
-                onClick={() => modalConfig.onConfirm(modalConfig.type === 'prompt' ? (promptInput || modalConfig.defaultValue) : undefined)}
-              >
-                {modalConfig.type === 'confirm' ? 'Löschen' : 'OK'}
-              </button>
+              {modalConfig.type === 'prompt' && (
+                <button 
+                  className="btn" 
+                  onClick={() => modalConfig.onConfirm(promptInput || modalConfig.defaultValue)}
+                >
+                  Bestätigen
+                </button>
+              )}
+              {modalConfig.type === 'confirm' && (
+                <button 
+                  className="btn" 
+                  style={{ background: '#f56565', color: 'white' }}
+                  onClick={() => modalConfig.onConfirm()}
+                >
+                  Bestätigen
+                </button>
+              )}
             </div>
           </div>
         </div>,
@@ -315,7 +357,41 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
   );
 }
 
-function LocalSkinCard({ skin, onApply, onDelete, loading }: { skin: LocalSkin, onApply: () => void, onDelete: () => void, loading: boolean }) {
+function EditSkinForm({ skin, onConfirm, onCancel }: { skin: LocalSkin, onConfirm: (updates: any) => void, onCancel: () => void }) {
+  const [name, setName] = useState(skin.name);
+  const [variant, setVariant] = useState(skin.variant || 'classic');
+
+  return (
+    <div>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', color: '#94a3b8', fontSize: '14px' }}>Name</label>
+        <input 
+          type="text" 
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid #3b82f6', borderRadius: '4px', color: 'white', boxSizing: 'border-box' }}
+        />
+      </div>
+      <div style={{ marginBottom: '25px' }}>
+        <label style={{ display: 'block', marginBottom: '5px', color: '#94a3b8', fontSize: '14px' }}>Modell</label>
+        <select 
+          value={variant}
+          onChange={(e) => setVariant(e.target.value)}
+          style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid #3b82f6', borderRadius: '4px', color: 'white', boxSizing: 'border-box' }}
+        >
+          <option value="classic">Klassisch (Steve)</option>
+          <option value="slim">Schlank (Alex)</option>
+        </select>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
+        <button className="btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }} onClick={onCancel}>Abbrechen</button>
+        <button className="btn" onClick={() => onConfirm({ name, variant })}>Speichern</button>
+      </div>
+    </div>
+  );
+}
+
+function LocalSkinCard({ skin, onApply, onDelete, onEdit, loading }: { skin: LocalSkin, onApply: () => void, onDelete: () => void, onEdit: () => void, loading: boolean }) {
   const [skinBase64, setSkinBase64] = useState<string | null>(null);
   
   useEffect(() => {
@@ -336,8 +412,11 @@ function LocalSkinCard({ skin, onApply, onDelete, loading }: { skin: LocalSkin, 
         )}
       </div>
       <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: 'white', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{skin.name}</h3>
-      <div style={{ display: 'flex', gap: '10px' }}>
+      <div style={{ display: 'flex', gap: '5px' }}>
         <button className="btn" onClick={onApply} disabled={loading} style={{ flex: 1, padding: '8px' }}>Anwenden</button>
+        <button className="btn" onClick={onEdit} disabled={loading} title="Bearbeiten" style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.1)', color: 'white' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+        </button>
         <button className="btn-icon-danger" onClick={onDelete} disabled={loading} title="Löschen" style={{ padding: '8px 12px' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
         </button>
