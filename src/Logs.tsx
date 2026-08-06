@@ -315,7 +315,13 @@ export default function Logs() {
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
-      <div data-tauri-drag-region style={{
+      <div data-tauri-drag-region 
+        onPointerDown={(e) => {
+          if (e.target === e.currentTarget) {
+            getCurrentWindow().startDragging();
+          }
+        }}
+        style={{
         height: '40px',
         background: '#0a0e14',
         userSelect: 'none',
@@ -399,7 +405,8 @@ export default function Logs() {
               wordWrap: 'break-word',
               fontSize: '12px',
               lineHeight: 1.5,
-              background: '#0d1117'
+              background: '#0d1117',
+              userSelect: 'text'
             }}
             className="custom-scrollbar"
           >
