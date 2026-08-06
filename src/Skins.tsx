@@ -215,24 +215,13 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
         <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
           <h2 style={{ fontSize: '16px', marginTop: 0, color: '#94a3b8' }}>Aktueller Skin</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '15px' }}>
-            {activeSkinInfo.skins && activeSkinInfo.skins.length > 0 ? (
-              <div style={{ width: '100px', height: '200px' }}>
-                <ActiveSkin3D url={activeSkinInfo.skins[0].url} />
-              </div>
-            ) : (
-              <img 
-                src={`https://crafatar.com/renders/body/${activeSkinInfo.id}?overlay=true`} 
-                alt="Aktueller Skin" 
-                style={{ width: '80px', height: '180px', objectFit: 'contain' }}
-                onError={(e) => {
-                  if (!e.currentTarget.src.includes('avatars')) {
-                    e.currentTarget.src = `https://crafatar.com/avatars/${activeSkinInfo.id}?overlay=true`;
-                    e.currentTarget.style.width = '80px';
-                    e.currentTarget.style.height = '80px';
-                  }
-                }}
-              />
-            )}
+            <div style={{ width: '100px', height: '200px' }}>
+              <ActiveSkin3D url={
+                activeSkinInfo.skins && activeSkinInfo.skins.length > 0 
+                  ? activeSkinInfo.skins[0].url 
+                  : `https://minotar.net/skin/${activeSkinInfo.id}`
+              } />
+            </div>
             <div>
               <p style={{ margin: '0 0 5px 0', fontSize: '14px', color: 'white' }}>Variante: {activeSkinInfo.skins && activeSkinInfo.skins.length > 0 ? activeSkinInfo.skins[0].variant : 'classic'}</p>
               <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Wird im Spiel angezeigt</p>
@@ -410,5 +399,5 @@ function Skin3DPreview({ base64 }: { base64: string }) {
     };
   }, [base64]);
   
-  return <div ref={containerRef} />;
+  return <div ref={containerRef} style={{ width: '150px', height: '200px' }} />;
 }
