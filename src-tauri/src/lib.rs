@@ -67,6 +67,22 @@ async fn launch_game(
     
     // Log window removed per user request
 
+    // Open log window
+    let window_label = format!("logs_{}", uuid::Uuid::new_v4().simple());
+    if let Err(e) = tauri::WebviewWindowBuilder::new(
+        &app,
+        &window_label,
+        tauri::WebviewUrl::App("index.html?window=logs".into())
+    )
+    .title("Minecraft Logs")
+    .inner_size(900.0, 600.0)
+    .decorations(false)
+    .transparent(true)
+    .center()
+    .build() {
+        println!("Failed to create log window: {}", e);
+    }
+
     tauri::async_runtime::spawn(async move {
         if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), &version, &loader, &loader_version, &profile_name, &username, &uuid, &access_token).await {
             let _ = app.emit("game-log", format!("[ERROR] Failed to launch: {}", e));

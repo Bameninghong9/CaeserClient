@@ -55,7 +55,7 @@ function Titlebar({
       <div className="titlebar-right">
         {activeCreds && (
           <div className="titlebar-profile" onClick={() => setDropdownOpen(!dropdownOpen)}>
-            <img src={`https://minotar.net/helm/${activeCreds.username}/100.png`} alt="Avatar" className="profile-avatar" />
+            <img src={`https://minotar.net/helm/${activeCreds.id}/100.png`} alt="Avatar" className="profile-avatar" />
             <span className="profile-name">{activeCreds.username}</span>
             
             {dropdownOpen && (
@@ -67,7 +67,7 @@ function Titlebar({
                     className={`account-dropdown-item ${acc.id === activeAccountId ? 'active-account' : ''}`}
                     onClick={() => { onSelectAccount(acc.id); setDropdownOpen(false); }}
                   >
-                    <img src={`https://minotar.net/helm/${acc.username}/100.png`} alt="Avatar" className="profile-avatar" style={{ width: '24px', height: '24px' }} />
+                    <img src={`https://minotar.net/helm/${acc.id}/100.png`} alt="Avatar" className="profile-avatar" style={{ width: '24px', height: '24px' }} />
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username}</span>
                     <button className="btn-icon-danger" onMouseDown={(e) => { e.stopPropagation(); onLogout(acc.id); if(accounts.length === 1) setDropdownOpen(false); }} onClick={(e) => e.stopPropagation()} title="Remove Account">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

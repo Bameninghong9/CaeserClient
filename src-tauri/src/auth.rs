@@ -278,11 +278,10 @@ async fn minecraft_token(token: DeviceToken) -> Result<MinecraftToken, String> {
     let token = token.token;
 
     let res = HTTP_CLIENT
-        .post("https://api.minecraftservices.com/launcher/login")
+        .post("https://api.minecraftservices.com/authentication/login_with_xbox")
         .header("Accept", "application/json")
         .json(&json!({
-            "platform": "PC_LAUNCHER",
-            "xtoken": format!("XBL3.0 x={uhs};{token}"),
+            "identityToken": format!("XBL3.0 x={uhs};{token}")
         }))
         .send()
         .await
