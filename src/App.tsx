@@ -257,7 +257,7 @@ function App() {
   useEffect(() => {
     // Show window when the UI is fully loaded and ready
     const timer = setTimeout(() => {
-      getCurrentWindow().show();
+      invoke('show_window').catch(console.error);
     }, 50);
     return () => clearTimeout(timer);
   }, []);

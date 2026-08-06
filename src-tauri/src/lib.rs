@@ -115,6 +115,11 @@ async fn minimize_window(window: tauri::Window) {
 }
 
 #[tauri::command]
+async fn show_window(window: tauri::Window) {
+    let _ = window.show();
+}
+
+#[tauri::command]
 async fn maximize_window(window: tauri::Window) {
     if let Ok(true) = window.is_maximized() {
         let _ = window.unmaximize();
@@ -317,6 +322,7 @@ pub fn run() {
             get_versions, 
             launch_game,
             minimize_window,
+            show_window,
             maximize_window,
             close_window,
             install_mod,
