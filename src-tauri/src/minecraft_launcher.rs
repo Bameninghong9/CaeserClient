@@ -213,6 +213,7 @@ pub async fn launch_minecraft(
 
     let mut child = Command::new("java")
         .args(args)
+        .current_dir(profile_dir.clone())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -221,52 +222,31 @@ pub async fn launch_minecraft(
     let stdout = child.stdout.take().unwrap();
     let stderr = child.stderr.take().unwrap();
 
-    let logs_dir = app_dir.join("logs");
-    fs::create_dir_all(&logs_dir).unwrap_or(());
-    let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-    let log_file_path = logs_dir.join(format!("{}.log.gz", timestamp));
-    
-    let file = File::create(&log_file_path).map_err(|e| e.to_string())?;
-    let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
-    let shared_encoder = std::sync::Arc::new(std::sync::Mutex::new(encoder));
-
     let app_clone1 = app.clone();
-    let enc1 = shared_encoder.clone();
     tauri::async_runtime::spawn(async move {
-        use std::io::{BufRead, BufReader, Write};
+        use std::io::{BufRead, BufReader};
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
             if let Ok(l) = line {
                 let _ = app_clone1.emit("game-log", &l);
-                if let Ok(mut enc) = enc1.lock() {
-                    let _ = writeln!(enc, "{}", l);
-                }
             }
         }
     });
 
     let app_clone2 = app.clone();
-    let enc2 = shared_encoder.clone();
     tauri::async_runtime::spawn(async move {
-        use std::io::{BufRead, BufReader, Write};
+        use std::io::{BufRead, BufReader};
         let reader = BufReader::new(stderr);
         for line in reader.lines() {
             if let Ok(l) = line {
                 let _ = app_clone2.emit("game-log", format!("[ERROR] {}", l));
-                if let Ok(mut enc) = enc2.lock() {
-                    let _ = writeln!(enc, "[ERROR] {}", l);
-                }
             }
         }
     });
 
-    let enc3 = shared_encoder.clone();
     tauri::async_runtime::spawn(async move {
         let _ = child.wait();
         let _ = app.emit("game-exit", ());
-        if let Ok(mut enc) = enc3.lock() {
-            let _ = enc.try_finish();
-        }
     });
 
     Ok(())
