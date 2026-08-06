@@ -31,7 +31,7 @@ export default function ModBrowser({
   const [searchQuery, setSearchQuery] = useState('');
   const [modrinthMods, setModrinthMods] = useState<ModData[]>([]);
   const [curseforgeMods, setCurseforgeMods] = useState<ModData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchMods = async () => {

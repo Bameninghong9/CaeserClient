@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import ProfileWizard from './ProfileWizard';
 import ModBrowser, { ModData } from './ModBrowser';
 import { invoke } from '@tauri-apps/api/core';
@@ -15,16 +16,18 @@ export interface Profile {
 
 export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: Credentials | null, resetTrigger?: number }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [showWizard, setShowWizard] = useState(false);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
-  const [showModBrowser, setShowModBrowser] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showWizard, setShowWizard] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
   
   // State for installed mods (ID -> ModData)
   const [installedMods, setInstalledMods] = useState<Record<string, ModData>>({});
   const [downloadingMods, setDownloadingMods] = useState<Record<string, boolean>>({});
 
-  const [isLaunching, setIsLaunching] = useState(false);
+  const [deleteProfileId, setDeleteProfileId] = useState<string | null>(null);
+
+  const [showModBrowser, setShowModBrowser] = useState(false);
   const [cachedVersions, setCachedVersions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -63,12 +66,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
 
   const handleDeleteProfile = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm('Möchtest du dieses Profil wirklich löschen?')) return;
-    
-    const updatedProfiles = profiles.filter(p => p.id !== id);
-    setProfiles(updatedProfiles);
-    invoke('save_profiles', { profiles: updatedProfiles })
-      .catch(e => console.error("Failed to delete profile:", e));
+    setDeleteProfileId(id);
   };
 
   const launchProfile = async (profile: Profile) => {
@@ -439,7 +437,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
         </div>
       </div>
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '15px' }}>
         {profiles.length === 0 && <p style={{ color: '#94a3b8' }}>Keine Profile vorhanden. Erstelle eins!</p>}
         {profiles.length > 0 && filteredProfiles.length === 0 && <p style={{ color: '#94a3b8' }}>Kein Profil mit diesem Namen gefunden.</p>}
         {filteredProfiles.map(p => (
@@ -448,9 +446,8 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
             onClick={() => setActiveProfile(p)} 
             style={{ 
               display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              padding: '16px 20px', 
+              flexDirection: 'column',
+              padding: '16px', 
               background: 'rgba(255,255,255,0.02)',
               border: '1px solid rgba(255,255,255,0.05)',
               borderRadius: '8px',
@@ -466,9 +463,9 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
               e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', marginBottom: '16px' }}>
               <div style={{ 
-                width: '48px', height: '48px', 
+                width: '40px', height: '40px', 
                 background: 'rgba(59, 130, 246, 0.1)', 
                 border: '1px solid rgba(59, 130, 246, 0.3)',
                 borderRadius: '8px', 
@@ -487,14 +484,14 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
               </div>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
               <button
                 className="btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   launchProfile(p);
                 }}
-                style={{ background: 'transparent', border: '1px solid rgba(59, 130, 246, 0.5)', padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}
+                style={{ flex: 1, justifyContent: 'center', background: 'transparent', border: '1px solid rgba(59, 130, 246, 0.5)', padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
                   e.currentTarget.style.borderColor = '#3b82f6';
@@ -515,7 +512,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
                   setActiveProfile(p);
                   setShowModBrowser(true);
                 }}
-                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}
+                style={{ flex: 1, justifyContent: 'center', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                   e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
@@ -557,6 +554,54 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
         <div className="custom-modal-overlay">
           <ProfileWizard cachedVersions={cachedVersions} onComplete={handleCreateProfile} onCancel={() => setShowWizard(false)} />
         </div>
+      )}
+
+      {deleteProfileId && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--surface-color)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            padding: '30px',
+            width: '400px',
+            maxWidth: '90%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+          }}>
+            <h2 style={{ margin: '0 0 15px 0', fontSize: '20px' }}>Profil löschen</h2>
+            <p style={{ color: '#94a3b8', margin: '0 0 25px 0' }}>Möchtest du dieses Profil wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
+              <button 
+                className="btn" 
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }} 
+                onClick={() => setDeleteProfileId(null)}
+              >
+                Abbrechen
+              </button>
+              <button 
+                className="btn" 
+                style={{ background: 'var(--danger-color)' }} 
+                onClick={() => {
+                  const updatedProfiles = profiles.filter(p => p.id !== deleteProfileId);
+                  setProfiles(updatedProfiles);
+                  invoke('save_profiles', { profiles: updatedProfiles })
+                    .catch(e => console.error("Failed to delete profile:", e));
+                  setDeleteProfileId(null);
+                }}
+              >
+                Löschen
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

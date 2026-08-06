@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+
 
 export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: { cachedVersions: string[], onComplete: (profile: any) => void, onCancel: () => void }) {
   const [step, setStep] = useState(1);

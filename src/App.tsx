@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -30,6 +31,7 @@ function Titlebar({
   onSelectAccount: (id: string) => void
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
   const appWindow = getCurrentWindow();
 
   useEffect(() => {
@@ -70,7 +72,7 @@ function Titlebar({
                   >
                     <img src={`https://minotar.net/helm/${acc.id}/100.png`} alt="Avatar" className="profile-avatar" style={{ width: '24px', height: '24px' }} />
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username}</span>
-                    <button className="btn-icon-danger" onMouseDown={(e) => { e.stopPropagation(); onLogout(acc.id); if(accounts.length === 1) setDropdownOpen(false); }} onClick={(e) => e.stopPropagation()} title="Remove Account">
+                    <button className="btn-icon-danger" onMouseDown={(e) => { e.stopPropagation(); setDeleteAccountId(acc.id); }} onClick={(e) => e.stopPropagation()} title="Remove Account">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -103,6 +105,52 @@ function Titlebar({
           </button>
         </div>
       </div>
+
+      {deleteAccountId && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--surface-color)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            padding: '30px',
+            width: '400px',
+            maxWidth: '90%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+          }}>
+            <h2 style={{ margin: '0 0 15px 0', fontSize: '20px' }}>Account löschen</h2>
+            <p style={{ color: '#94a3b8', margin: '0 0 25px 0' }}>Möchtest du diesen Account wirklich entfernen? Du musst dich danach erneut anmelden.</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
+              <button 
+                className="btn" 
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }} 
+                onClick={() => setDeleteAccountId(null)}
+              >
+                Abbrechen
+              </button>
+              <button 
+                className="btn" 
+                style={{ background: 'var(--danger-color)' }} 
+                onClick={() => {
+                  onLogout(deleteAccountId);
+                  if (accounts.length === 1) setDropdownOpen(false);
+                  setDeleteAccountId(null);
+                }}
+              >
+                Löschen
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -287,7 +335,7 @@ function App() {
       <div className="app-layout animate-fade-in">
         <Sidebar activeView={activeView} onViewChange={handleViewChange} />
         
-        <div className="content-area">
+        <div className="content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {activeView === 'home' && <Home activeCreds={activeCreds} />}
           {activeView === 'profiles' && <Profiles activeCreds={activeCreds} resetTrigger={resetTrigger} />}
           {activeView === 'skins' && <Skins activeCreds={activeCreds} />}
