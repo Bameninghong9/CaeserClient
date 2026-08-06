@@ -25,6 +25,34 @@ export default function Skins({ activeCreds }: { activeCreds: Credentials | null
     onCancel?: () => void;
   } | null>(null);
 
+  const processSkinImage = (dataUrl: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        if (img.width === 64 && (img.height === 64 || img.height === 32)) {
+          resolve(dataUrl);
+        } else if (img.width > 0 && img.height > 0) {
+          // Auto-resize to 64x64 or 64x32
+          const canvas = document.createElement('canvas');
+          canvas.width = 64;
+          canvas.height = img.height === img.width / 2 ? 32 : 64;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject("Konnte das Bild nicht verarbeiten.");
+            return;
+          }
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/png'));
+        } else {
+          reject(`Ungültiges Bildformat: ${img.width}x${img.height}.`);
+        }
+      };
+      img.onerror = () => reject("Defekte oder ungültige Bilddatei.");
+      img.src = dataUrl;
+    });
+  };
+
   const fetchLocalSkins = async () => {
     try {
       const skins = await invoke<LocalSkin[]>('get_local_skins');
@@ -56,40 +84,50 @@ export default function Skins({ activeCreds }: { activeCreds: Credentials | null
       const file = e.target.files[0];
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const base64Data = event.target?.result as string;
-        if (base64Data) {
-          const defaultName = file.name.split('.')[0];
-          setPromptInput(defaultName);
-          setModalConfig({
-            type: 'prompt',
-            title: 'Skin hinzufügen',
-            message: 'Name für den Skin eingeben:',
-            defaultValue: defaultName,
-            onConfirm: async (newName) => {
-              setModalConfig(null);
-              if (!newName) newName = "Neuer Skin";
-              try {
-                setLoading(true);
-                await invoke('add_local_skin', { name: newName, base64Data });
-                await fetchLocalSkins();
-              } catch (error) {
-                console.error("Error adding skin", error);
-                setModalConfig({
-                  type: 'alert',
-                  title: 'Fehler',
-                  message: 'Fehler beim Hinzufügen des Skins: ' + error,
-                  onConfirm: () => setModalConfig(null)
-                });
-              } finally {
-                setLoading(false);
+        const rawBase64 = event.target?.result as string;
+        if (rawBase64) {
+          try {
+            const processedBase64 = await processSkinImage(rawBase64);
+            const defaultName = file.name.split('.')[0];
+            setPromptInput(defaultName);
+            setModalConfig({
+              type: 'prompt',
+              title: 'Skin hinzufügen',
+              message: 'Name für den Skin eingeben:',
+              defaultValue: defaultName,
+              onConfirm: async (newName) => {
+                setModalConfig(null);
+                if (!newName) newName = "Neuer Skin";
+                try {
+                  setLoading(true);
+                  await invoke('add_local_skin', { name: newName, base64Data: processedBase64 });
+                  await fetchLocalSkins();
+                } catch (error) {
+                  console.error("Error adding skin", error);
+                  setModalConfig({
+                    type: 'alert',
+                    title: 'Fehler',
+                    message: 'Fehler beim Hinzufügen des Skins: ' + error,
+                    onConfirm: () => setModalConfig(null)
+                  });
+                } finally {
+                  setLoading(false);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }
+              },
+              onCancel: () => {
+                setModalConfig(null);
                 if (fileInputRef.current) fileInputRef.current.value = "";
               }
-            },
-            onCancel: () => {
-              setModalConfig(null);
-              if (fileInputRef.current) fileInputRef.current.value = "";
-            }
-          });
+            });
+          } catch (error) {
+            setModalConfig({
+              type: 'alert',
+              title: 'Fehler',
+              message: String(error),
+              onConfirm: () => setModalConfig(null)
+            });
+          }
         }
       };
       reader.readAsDataURL(file);
