@@ -51,6 +51,7 @@ async fn get_versions() -> Result<Vec<String>, String> {
 
 pub mod profile_manager;
 pub mod minecraft_launcher;
+pub mod skin_manager;
 
 #[tauri::command]
 async fn launch_game(
@@ -325,7 +326,13 @@ pub fn run() {
             auth::save_accounts,
             get_installed_mods,
             toggle_mod_file,
-            delete_mod_file
+            delete_mod_file,
+            skin_manager::get_local_skins,
+            skin_manager::add_local_skin,
+            skin_manager::remove_local_skin,
+            skin_manager::get_local_skin_base64,
+            skin_manager::get_user_skin_data,
+            skin_manager::apply_skin
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -6,6 +6,7 @@ import './index.css';
 import Home from './Home';
 import Profiles from './Profiles';
 import Logs from './Logs';
+import Skins from './Skins';
 
 export interface Credentials {
   id: string;
@@ -289,12 +290,7 @@ function App() {
         <div className="content-area">
           {activeView === 'home' && <Home activeCreds={activeCreds} />}
           {activeView === 'profiles' && <Profiles activeCreds={activeCreds} resetTrigger={resetTrigger} />}
-          {activeView === 'skins' && (
-            <div className="main-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
-              <h2>Skins</h2>
-              <p>Skin Manager coming soon...</p>
-            </div>
-          )}
+          {activeView === 'skins' && <Skins activeCreds={activeCreds} />}
         </div>
       </div>
     </>
