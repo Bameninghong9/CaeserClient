@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -17,15 +17,42 @@ export interface Credentials {
   expires: string;
 }
 
+function SkinAvatar({ skinUrl, size = 32 }: { skinUrl: string | null, size?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  useEffect(() => {
+    if (!skinUrl || !canvasRef.current) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const ctx = canvasRef.current!.getContext('2d');
+      if (!ctx) return;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(img, 8, 8, 8, 8, 0, 0, size, size);
+      ctx.drawImage(img, 40, 8, 8, 8, 0, 0, size, size);
+    };
+    img.src = skinUrl;
+  }, [skinUrl, size]);
+
+  if (!skinUrl) {
+    return <div style={{ width: size, height: size, background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} className="profile-avatar" />;
+  }
+
+  return <canvas ref={canvasRef} width={size} height={size} className="profile-avatar" style={{ borderRadius: '4px', width: size, height: size }} />;
+}
+
 function Titlebar({ 
   accounts, 
   activeAccountId, 
+  activeSkinUrl,
   onLogout, 
   onLogin, 
   onSelectAccount 
 }: { 
   accounts: Credentials[], 
   activeAccountId: string | null,
+  activeSkinUrl: string | null,
   onLogout: (id: string) => void, 
   onLogin: () => void,
   onSelectAccount: (id: string) => void
@@ -58,7 +85,11 @@ function Titlebar({
       <div className="titlebar-right">
         {activeCreds && (
           <div className="titlebar-profile" onClick={() => setDropdownOpen(!dropdownOpen)}>
-            <img src={`https://minotar.net/helm/${activeCreds.id}/100.png`} alt="Avatar" className="profile-avatar" />
+            {activeSkinUrl ? (
+              <SkinAvatar skinUrl={activeSkinUrl} size={32} />
+            ) : (
+              <img src={`https://minotar.net/helm/${activeCreds.id}/100.png`} alt="Avatar" className="profile-avatar" />
+            )}
             <span className="profile-name">{activeCreds.username}</span>
             
             {dropdownOpen && (
@@ -190,6 +221,23 @@ function App() {
   const [activeView, setActiveView] = useState('home');
   const [resetTrigger, setResetTrigger] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [activeSkinUrl, setActiveSkinUrl] = useState<string | null>(null);
+
+  const fetchActiveSkinUrl = async (creds: Credentials) => {
+    try {
+      const data: any = await invoke('get_user_skin_data', { accessToken: creds.access_token });
+      if (data.skins && data.skins.length > 0) {
+        const activeSkin = data.skins.find((s: any) => s.state === 'ACTIVE') || data.skins[0];
+        if (activeSkin && activeSkin.url) {
+          setActiveSkinUrl(activeSkin.url);
+          return;
+        }
+      }
+    } catch(e) {
+      console.error("Failed to fetch skin url", e);
+    }
+    setActiveSkinUrl(null);
+  };
 
   const handleViewChange = (view: string) => {
     setActiveView(view);
@@ -205,6 +253,15 @@ function App() {
   }
 
   const activeCreds = accounts.find(a => a.id === activeAccountId) || null;
+
+  useEffect(() => {
+    const creds = accounts.find(a => a.id === activeAccountId);
+    if (creds) {
+      fetchActiveSkinUrl(creds);
+    } else {
+      setActiveSkinUrl(null);
+    }
+  }, [activeAccountId, accounts]);
 
   useEffect(() => {
     let isMounted = true;
@@ -302,6 +359,7 @@ function App() {
         <Titlebar 
           accounts={accounts} 
           activeAccountId={activeAccountId} 
+          activeSkinUrl={activeSkinUrl}
           onLogout={handleLogout} 
           onLogin={handleLogin} 
           onSelectAccount={setActiveAccountId}
@@ -328,6 +386,7 @@ function App() {
       <Titlebar 
         accounts={accounts} 
         activeAccountId={activeAccountId} 
+        activeSkinUrl={activeSkinUrl}
         onLogout={handleLogout} 
         onLogin={handleLogin} 
         onSelectAccount={setActiveAccountId}
@@ -338,7 +397,14 @@ function App() {
         <div className="content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {activeView === 'home' && <Home activeCreds={activeCreds} />}
           {activeView === 'profiles' && <Profiles activeCreds={activeCreds} resetTrigger={resetTrigger} />}
-          {activeView === 'skins' && <Skins activeCreds={activeCreds} />}
+          {activeView === 'skins' && (
+            <Skins 
+              activeCreds={activeCreds} 
+              onSkinChanged={() => {
+                if (activeCreds) fetchActiveSkinUrl(activeCreds);
+              }}
+            />
+          )}
         </div>
       </div>
     </>

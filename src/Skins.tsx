@@ -10,7 +10,7 @@ export interface LocalSkin {
   file_name: string;
 }
 
-export default function Skins({ activeCreds }: { activeCreds: Credentials | null }) {
+export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Credentials | null, onSkinChanged?: () => void }) {
   const [localSkins, setLocalSkins] = useState<LocalSkin[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeSkinInfo, setActiveSkinInfo] = useState<any>(null);
@@ -146,9 +146,10 @@ export default function Skins({ activeCreds }: { activeCreds: Credentials | null
       setModalConfig({
         type: 'alert',
         title: 'Erfolg',
-        message: 'Skin erfolgreich angewendet!',
+        message: 'Der Skin wurde erfolgreich angewendet!',
         onConfirm: () => setModalConfig(null)
       });
+      if (onSkinChanged) onSkinChanged();
       await fetchActiveSkin();
     } catch (error) {
       console.error("Error applying skin", error);

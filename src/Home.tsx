@@ -48,6 +48,7 @@ export default function Home({ activeCreds }: { activeCreds: Credentials | null 
         loader: selectedProfile.loader || "vanilla",
         loaderVersion: selectedProfile.loaderVersion || "",
         profileName: selectedProfile.name,
+        ram: selectedProfile.ram || 2048,
         creds: activeCreds 
       });
       setProgress(100);
