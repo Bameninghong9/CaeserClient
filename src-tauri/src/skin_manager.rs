@@ -150,6 +150,8 @@ pub async fn apply_skin(access_token: String, file_name: String, variant: String
     if res.status().is_success() {
         Ok(())
     } else {
-        Err(format!("Failed to apply skin: {}", res.status()))
+        let status = res.status();
+        let body = res.text().await.unwrap_or_default();
+        Err(format!("Failed to apply skin: {} - {}", status, body))
     }
 }

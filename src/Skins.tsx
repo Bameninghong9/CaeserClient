@@ -215,17 +215,24 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
         <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
           <h2 style={{ fontSize: '16px', marginTop: 0, color: '#94a3b8' }}>Aktueller Skin</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '15px' }}>
-            <img 
-              src={`https://crafatar.com/renders/body/${activeSkinInfo.id}?overlay=true`} 
-              alt="Aktueller Skin" 
-              style={{ width: '80px', height: '180px', objectFit: 'contain' }}
-              onError={(e) => {
-                // Fallback to face if body render fails
-                e.currentTarget.src = `https://crafatar.com/avatars/${activeSkinInfo.id}?overlay=true`;
-                e.currentTarget.style.width = '80px';
-                e.currentTarget.style.height = '80px';
-              }}
-            />
+            {activeSkinInfo.skins && activeSkinInfo.skins.length > 0 ? (
+              <div style={{ width: '100px', height: '200px' }}>
+                <ActiveSkin3D url={activeSkinInfo.skins[0].url} />
+              </div>
+            ) : (
+              <img 
+                src={`https://crafatar.com/renders/body/${activeSkinInfo.id}?overlay=true`} 
+                alt="Aktueller Skin" 
+                style={{ width: '80px', height: '180px', objectFit: 'contain' }}
+                onError={(e) => {
+                  if (!e.currentTarget.src.includes('avatars')) {
+                    e.currentTarget.src = `https://crafatar.com/avatars/${activeSkinInfo.id}?overlay=true`;
+                    e.currentTarget.style.width = '80px';
+                    e.currentTarget.style.height = '80px';
+                  }
+                }}
+              />
+            )}
             <div>
               <p style={{ margin: '0 0 5px 0', fontSize: '14px', color: 'white' }}>Variante: {activeSkinInfo.skins && activeSkinInfo.skins.length > 0 ? activeSkinInfo.skins[0].variant : 'classic'}</p>
               <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Wird im Spiel angezeigt</p>
@@ -320,98 +327,88 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
 }
 
 function LocalSkinCard({ skin, onApply, onDelete, loading }: { skin: LocalSkin, onApply: () => void, onDelete: () => void, loading: boolean }) {
-  const [imgData, setImgData] = useState<string>('');
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const viewerRef = useRef<SkinViewer | null>(null);
-
+  const [skinBase64, setSkinBase64] = useState<string | null>(null);
+  
   useEffect(() => {
     invoke<string>('get_local_skin_base64', { fileName: skin.file_name })
-      .then(setImgData)
+      .then(b64 => setSkinBase64(`data:image/png;base64,${b64}`))
       .catch(console.error);
   }, [skin.file_name]);
-
-  useEffect(() => {
-    if (imgData && canvasRef.current) {
-      if (!viewerRef.current) {
-        viewerRef.current = new SkinViewer({
-          canvas: canvasRef.current,
-          width: 150,
-          height: 150,
-          skin: imgData
-        });
-        viewerRef.current.animation = new IdleAnimation();
-      } else {
-        viewerRef.current.loadSkin(imgData);
-      }
-    }
-    return () => {
-      if (viewerRef.current) {
-        viewerRef.current.dispose();
-        viewerRef.current = null;
-      }
-    };
-  }, [imgData]);
-
+  
   return (
-    <div style={{ 
-      background: 'rgba(255,255,255,0.02)', 
-      border: '1px solid rgba(255,255,255,0.05)', 
-      borderRadius: '8px', 
-      padding: '15px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: '15px',
-      position: 'relative'
-    }}>
-      <div style={{ 
-        width: '100%', 
-        aspectRatio: '1', 
-        background: 'rgba(0,0,0,0.2)', 
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden'
-      }}>
-        {imgData ? (
-          <canvas ref={canvasRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+    <div className="profile-card">
+      <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+        {skinBase64 ? (
+          <Skin3DPreview base64={skinBase64} />
         ) : (
-          <div style={{ width: '40px', height: '40px', border: '2px solid rgba(255,255,255,0.1)', borderRadius: '50%', borderTopColor: '#3b82f6', animation: 'spin 1s linear infinite' }}></div>
+          <div style={{ width: '100%', height: '100%', background: 'rgba(0,0,0,0.2)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: '#94a3b8' }}>Lädt...</span>
+          </div>
         )}
       </div>
-      
-      <h3 style={{ margin: 0, fontSize: '14px', textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {skin.name}
-      </h3>
-      
-      <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
-        <button 
-          className="btn" 
-          style={{ flex: 1, padding: '6px', fontSize: '11px', letterSpacing: '0.5px' }} 
-          onClick={onApply}
-          disabled={loading}
-        >
-          Anwenden
-        </button>
-        <button 
-          style={{ 
-            background: 'rgba(245, 101, 101, 0.1)', 
-            border: '1px solid rgba(245, 101, 101, 0.3)', 
-            color: '#f56565', 
-            borderRadius: '4px',
-            padding: '6px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-          onClick={onDelete}
-          disabled={loading}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+      <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: 'white', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{skin.name}</h3>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button className="btn" onClick={onApply} disabled={loading} style={{ flex: 1, padding: '8px' }}>Anwenden</button>
+        <button className="btn-icon-danger" onClick={onDelete} disabled={loading} title="Löschen" style={{ padding: '8px 12px' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
         </button>
       </div>
     </div>
   );
+}
+
+function ActiveSkin3D({ url }: { url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const viewer = new SkinViewer({
+      width: 100,
+      height: 200,
+      skin: url
+    });
+    
+    viewer.animation = new IdleAnimation();
+    
+    const canvas = viewer.canvas;
+    containerRef.current.appendChild(canvas);
+    
+    return () => {
+      viewer.dispose();
+      if (containerRef.current && containerRef.current.contains(canvas)) {
+        containerRef.current.removeChild(canvas);
+      }
+    };
+  }, [url]);
+
+  return <div ref={containerRef} style={{ width: '100%', height: '100%' }}></div>;
+}
+
+function Skin3DPreview({ base64 }: { base64: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const viewer = new SkinViewer({
+      width: 150,
+      height: 200,
+      skin: base64
+    });
+    
+    viewer.animation = new IdleAnimation();
+    
+    const canvas = viewer.canvas;
+    containerRef.current.appendChild(canvas);
+    
+    return () => {
+      viewer.dispose();
+      if (containerRef.current && containerRef.current.contains(canvas)) {
+        containerRef.current.removeChild(canvas);
+      }
+    };
+  }, [base64]);
+  
+  return <div ref={containerRef} />;
 }
