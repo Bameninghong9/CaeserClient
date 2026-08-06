@@ -379,13 +379,19 @@ body.maximized {
   padding-right: 8px;
 }
 
-/* Custom scrollbar for grid */
-.version-grid::-webkit-scrollbar {
-  width: 6px;
+/* Custom scrollbar for entire app */
+::-webkit-scrollbar {
+  width: 8px;
 }
-.version-grid::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .version-card {
