@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (profile: any) => void, onCancel: () => void }) {
   const [step, setStep] = useState(1);
   const [versions, setVersions] = useState<string[]>([]);
+  const [versionSearch, setVersionSearch] = useState('');
   const [version, setVersion] = useState('');
   const [loader, setLoader] = useState('Vanilla');
   const [name, setName] = useState('');
@@ -47,29 +48,116 @@ export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (p
 
       <div className="wizard-content">
         {step === 1 && (
-          <>
-            <h3>Minecraft Version wählen</h3>
-            <select className="select-modern" value={version} onChange={e => setVersion(e.target.value)}>
-              {versions.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-          </>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <input 
+                type="text"
+                placeholder="Versionen suchen..."
+                value={versionSearch}
+                onChange={(e) => setVersionSearch(e.target.value)}
+                style={{
+                  background: 'rgba(0,0,0,0.5)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '6px',
+                  padding: '10px 15px',
+                  color: 'white',
+                  width: '100%',
+                  maxWidth: '300px'
+                }}
+              />
+            </div>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: '15px',
+              maxHeight: '400px',
+              overflowY: 'auto',
+              paddingRight: '10px'
+            }}>
+              {versions.filter(v => v.toLowerCase().includes(versionSearch.toLowerCase())).map(v => (
+                <div 
+                  key={v} 
+                  onClick={() => setVersion(v)}
+                  style={{
+                    background: version === v ? 'transparent' : '#0f172a',
+                    border: version === v ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.05)',
+                    borderRadius: '8px',
+                    padding: '20px 10px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s',
+                    boxShadow: version === v ? '0 0 15px rgba(59,130,246,0.3) inset' : 'none'
+                  }}
+                  onMouseOver={(e) => {
+                    if (version !== v) {
+                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
+                      e.currentTarget.style.background = '#1e293b';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (version !== v) {
+                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.05)';
+                      e.currentTarget.style.background = '#0f172a';
+                    }
+                  }}
+                >
+                  <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'monospace' }}>{v}</div>
+                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Release</div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
         
         {step === 2 && (
           <>
-            <h3>Modloader wählen</h3>
-            <div className="loader-grid">
-              {['Vanilla', 'Fabric', 'Forge', 'NeoForge'].map(l => (
+            <h3 style={{ textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>SPIELVERSION</h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '20px'
+            }}>
+              {[
+                { id: 'Vanilla', bg: 'linear-gradient(to bottom, #5b8c38 30%, #5d4037 30%)' },
+                { id: 'Fabric', bg: 'linear-gradient(135deg, #d6d3cd 0%, #9e9a92 100%)' },
+                { id: 'Forge', bg: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)' },
+                { id: 'NeoForge', bg: 'linear-gradient(135deg, #9b2c2c 0%, #742a2a 100%)' }
+              ].map(l => (
                 <div 
-                  key={l}
-                  className={`loader-card ${loader === l ? 'selected' : ''}`}
-                  onClick={() => setLoader(l)}
+                  key={l.id}
+                  onClick={() => setLoader(l.id)}
+                  style={{
+                    height: '140px',
+                    background: l.bg,
+                    border: loader === l.id ? '2px solid #3b82f6' : '2px solid transparent',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                    transition: 'transform 0.2s, border 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                 >
-                  <div className="loader-icon">
-                    {/* Placeholder icon based on name */}
-                    {l === 'Vanilla' ? '🧊' : l === 'Fabric' ? '🧶' : l === 'Forge' ? '🔨' : '🌱'}
-                  </div>
-                  <span>{l}</span>
+                  <span style={{ 
+                    position: 'relative', 
+                    zIndex: 1, 
+                    fontSize: '24px', 
+                    fontWeight: 'bold', 
+                    fontFamily: 'monospace', 
+                    color: 'white',
+                    textTransform: 'uppercase',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.8)'
+                  }}>{l.id}</span>
                 </div>
               ))}
             </div>
