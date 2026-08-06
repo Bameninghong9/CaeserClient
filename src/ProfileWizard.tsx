@@ -12,7 +12,8 @@ export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (p
 
   useEffect(() => {
     invoke<string[]>('get_versions').then((v) => {
-      const filtered = v.filter(ver => !ver.includes('w') && !ver.includes('pre') && !ver.includes('rc') && !ver.includes('Alpha') && !ver.includes('Beta'));
+      let filtered = v.filter(ver => !ver.includes('w') && !ver.includes('pre') && !ver.includes('rc') && !ver.includes('Alpha') && !ver.includes('Beta'));
+      filtered.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
       setVersions(filtered);
       if (filtered.length > 0) setVersion(filtered[0]);
     }).catch(console.error);
@@ -69,7 +70,7 @@ export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (p
             
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '15px',
               maxHeight: '400px',
               overflowY: 'auto',
@@ -123,17 +124,21 @@ export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (p
               gap: '20px'
             }}>
               {[
-                { id: 'Vanilla', bg: 'linear-gradient(to bottom, #5b8c38 30%, #5d4037 30%)' },
-                { id: 'Fabric', bg: 'linear-gradient(135deg, #d6d3cd 0%, #9e9a92 100%)' },
-                { id: 'Forge', bg: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)' },
-                { id: 'NeoForge', bg: 'linear-gradient(135deg, #9b2c2c 0%, #742a2a 100%)' }
+                { id: 'Vanilla', bg: 'url("/assets/vanilla.png")' },
+                { id: 'Fabric', bg: 'url("/assets/fabric.png")' },
+                { id: 'Forge', bg: 'url("/assets/forge.png")' },
+                { id: 'NeoForge', bg: 'url("/assets/neoforge.png")' }
               ].map(l => (
                 <div 
                   key={l.id}
                   onClick={() => setLoader(l.id)}
                   style={{
                     height: '140px',
-                    background: l.bg,
+                    backgroundColor: '#1e293b',
+                    backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), ${l.bg}`,
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
                     border: loader === l.id ? '2px solid #3b82f6' : '2px solid transparent',
                     borderRadius: '4px',
                     cursor: 'pointer',
