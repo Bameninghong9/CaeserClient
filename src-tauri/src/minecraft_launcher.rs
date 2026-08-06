@@ -204,6 +204,8 @@ pub async fn launch_minecraft(
     let mut args = Vec::new();
     
     args.push(format!("-Djava.library.path={}", natives_dir.to_string_lossy()));
+    args.push(format!("-Dcaeserclient.profileName={}", profile_name));
+    args.push(format!("-Dcaeserclient.profileVersion={}", version));
     args.push("-cp".to_string());
     args.push(cp_string);
     args.push(main_class.to_string());

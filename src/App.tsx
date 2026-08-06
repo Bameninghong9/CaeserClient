@@ -143,17 +143,41 @@ function App() {
   const activeCreds = accounts.find(a => a.id === activeAccountId) || null;
 
   useEffect(() => {
-    invoke('get_accounts').then((loaded: any) => {
-      if (loaded && loaded.length > 0) {
-        setAccounts(loaded);
-        setActiveAccountId(loaded[0].id);
-      }
-      setIsLoaded(true);
-    }).catch((e) => {
-      console.error(e);
-      setIsLoaded(true);
-    });
+    let isMounted = true;
+    const fetchAccounts = () => {
+      invoke('get_accounts').then((loaded: any) => {
+        if (!isMounted) return;
+        if (loaded) {
+          setAccounts(prev => {
+            if (JSON.stringify(prev) !== JSON.stringify(loaded)) {
+              return loaded;
+            }
+            return prev;
+          });
+        }
+        setIsLoaded(true);
+      }).catch((e) => {
+        console.error(e);
+        if (isMounted) setIsLoaded(true);
+      });
+    };
+
+    fetchAccounts();
+    const interval = setInterval(fetchAccounts, 2000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
+
+  useEffect(() => {
+    if (accounts.length > 0 && !activeAccountId) {
+      setActiveAccountId(accounts[0].id);
+    } else if (accounts.length === 0 && activeAccountId) {
+      setActiveAccountId(null);
+    }
+  }, [accounts, activeAccountId]);
 
   useEffect(() => {
     if (isLoaded) {

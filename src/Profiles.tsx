@@ -18,6 +18,7 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
   const [showWizard, setShowWizard] = useState(false);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [showModBrowser, setShowModBrowser] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // State for installed mods (ID -> ModData)
   const [installedMods, setInstalledMods] = useState<Record<string, ModData>>({});
@@ -42,6 +43,16 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
     // Save to backend
     invoke('save_profiles', { profiles: updatedProfiles })
       .catch(e => console.error("Failed to save profiles:", e));
+  };
+
+  const handleDeleteProfile = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm('Möchtest du dieses Profil wirklich löschen?')) return;
+    
+    const updatedProfiles = profiles.filter(p => p.id !== id);
+    setProfiles(updatedProfiles);
+    invoke('save_profiles', { profiles: updatedProfiles })
+      .catch(e => console.error("Failed to delete profile:", e));
   };
 
   const handlePlay = async () => {
@@ -394,19 +405,43 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
     );
   }
 
+  const filteredProfiles = profiles.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
   return (
     <div className="main-content">
       <div className="profile-header">
         <h1 className="hero-title">Profile</h1>
-        <button className="btn" onClick={() => setShowWizard(true)}>
-          Profil erstellen
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            className="input"
+            placeholder="Profile durchsuchen..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ padding: '8px 12px', fontSize: '14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.3)', color: 'white', width: '250px' }}
+          />
+          <button className="btn" onClick={() => setShowWizard(true)}>
+            Profil erstellen
+          </button>
+        </div>
       </div>
       
       <div className="version-grid" style={{ marginTop: '20px' }}>
         {profiles.length === 0 && <p>Keine Profile vorhanden. Erstelle eins!</p>}
-        {profiles.map(p => (
-          <div key={p.id} className="profile-card" onClick={() => setActiveProfile(p)}>
+        {profiles.length > 0 && filteredProfiles.length === 0 && <p>Kein Profil mit diesem Namen gefunden.</p>}
+        {filteredProfiles.map(p => (
+          <div key={p.id} className="profile-card" onClick={() => setActiveProfile(p)} style={{ position: 'relative' }}>
+            <button
+              onClick={(e) => handleDeleteProfile(e, p.id)}
+              style={{
+                position: 'absolute', top: '10px', right: '10px',
+                background: 'transparent', border: 'none', color: '#f56565',
+                cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+              title="Profil löschen"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
             <h3>{p.name}</h3>
             <div className="profile-badges">
               <span className="badge">{p.version}</span>
