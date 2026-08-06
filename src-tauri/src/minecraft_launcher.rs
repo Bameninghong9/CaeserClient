@@ -41,6 +41,18 @@ pub async fn launch_minecraft(
     fs::create_dir_all(&mc_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&profile_dir).map_err(|e| e.to_string())?;
 
+    // Auto-inject caeserclient mod into the profile's mods folder
+    let mods_dir = profile_dir.join("mods");
+    fs::create_dir_all(&mods_dir).map_err(|e| e.to_string())?;
+    let mod_dest = mods_dir.join("caeserclient-mod.jar");
+    // Get the bundled resource path via Tauri's resource resolver
+    if let Ok(resource_path) = app.path().resource_dir() {
+        let mod_src = resource_path.join("caeserclient-mod.jar");
+        if mod_src.exists() {
+            let _ = fs::copy(&mod_src, &mod_dest);
+        }
+    }
+
     emit_log(&app, &instance_id, format!("[INFO] Resolving version {} (Loader: {})...", version, loader));
 
     // 1. Fetch version manifest

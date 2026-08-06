@@ -27,6 +27,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": {
+      "resources/caeserclient-mod.jar": "caeserclient-mod.jar"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
