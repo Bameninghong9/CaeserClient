@@ -283,16 +283,21 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
           animation: 'fadeIn 0.2s ease-out'
         }}>
           <div style={{
-            background: 'var(--surface-color)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '12px',
-            padding: '30px',
-            width: '400px',
+            background: modalConfig.type === 'editSkin' ? 'transparent' : 'var(--surface-color)',
+            border: modalConfig.type === 'editSkin' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.1)',
+            borderRadius: modalConfig.type === 'editSkin' ? '0' : '12px',
+            padding: modalConfig.type === 'editSkin' ? '0' : '30px',
+            width: modalConfig.type === 'editSkin' ? '500px' : '400px',
             maxWidth: '90%',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+            boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+            overflow: 'hidden'
           }}>
-            <h2 style={{ margin: '0 0 15px 0', fontSize: '20px' }}>{modalConfig.title}</h2>
-            <p style={{ color: '#94a3b8', margin: '0 0 25px 0' }}>{modalConfig.message}</p>
+            {modalConfig.type !== 'editSkin' && (
+              <>
+                <h2 style={{ margin: '0 0 15px 0', fontSize: '20px' }}>{modalConfig.title}</h2>
+                <p style={{ color: '#94a3b8', margin: '0 0 25px 0' }}>{modalConfig.message}</p>
+              </>
+            )}
             
             {modalConfig.type === 'prompt' && (
               <input 
@@ -313,12 +318,11 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
               />
             )}
             {modalConfig.type === 'editSkin' && modalConfig.skinToEdit && (() => {
-              // We need local state for the edit form inside the modal
-              // We'll extract this to a small inline component for state management
               return <EditSkinForm skin={modalConfig.skinToEdit} onConfirm={modalConfig.onConfirm} onCancel={() => { if (modalConfig.onCancel) modalConfig.onCancel(); setModalConfig(null); }} />;
             })()}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
+            {modalConfig.type !== 'editSkin' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
               {(modalConfig.type === 'confirm' || modalConfig.type === 'prompt' || modalConfig.type === 'alert') && (
                 <button 
                   className="btn" 
@@ -349,6 +353,7 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
                 </button>
               )}
             </div>
+            )}
           </div>
         </div>,
         document.body
@@ -360,32 +365,80 @@ export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Cre
 function EditSkinForm({ skin, onConfirm, onCancel }: { skin: LocalSkin, onConfirm: (updates: any) => void, onCancel: () => void }) {
   const [name, setName] = useState(skin.name);
   const [variant, setVariant] = useState(skin.variant || 'classic');
+  const [skinBase64, setSkinBase64] = useState<string | null>(null);
+
+  useEffect(() => {
+    invoke<string>('get_local_skin_base64', { fileName: skin.file_name })
+      .then(b64 => setSkinBase64(b64))
+      .catch(console.error);
+  }, [skin.file_name]);
 
   return (
-    <div>
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', color: '#94a3b8', fontSize: '14px' }}>Name</label>
-        <input 
-          type="text" 
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid #3b82f6', borderRadius: '4px', color: 'white', boxSizing: 'border-box' }}
-        />
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: '"Minecraft", "Minecraftia", monospace' }}>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', background: '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <span style={{ fontWeight: 'bold', fontSize: '14px', color: 'white' }}>SKIN-EIGENSCHAFTEN BEARBEITEN</span>
+        <button onClick={onCancel} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: '4px' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
-      <div style={{ marginBottom: '25px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', color: '#94a3b8', fontSize: '14px' }}>Modell</label>
-        <select 
-          value={variant}
-          onChange={(e) => setVariant(e.target.value)}
-          style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid #3b82f6', borderRadius: '4px', color: 'white', boxSizing: 'border-box' }}
+
+      <div style={{ padding: '40px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#0f172a' }}>
+        
+        <div style={{ width: '100%', maxWidth: '350px', marginBottom: '30px' }}>
+          <input 
+            type="text" 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{ width: '100%', padding: '12px 15px', background: '#000000', border: '1px solid rgba(255,255,255,0.1)', color: 'white', boxSizing: 'border-box', fontSize: '16px', fontFamily: 'inherit' }}
+          />
+        </div>
+
+        <div style={{ height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '40px' }}>
+          {skinBase64 ? <Skin3DPreview base64={skinBase64} variant={variant} /> : <span style={{ color: '#94a3b8' }}>LÄDT...</span>}
+        </div>
+
+        <div style={{ display: 'flex', gap: '30px', marginBottom: '40px' }}>
+          <label 
+            onClick={() => setVariant('classic')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '12px', color: 'white' }}
+          >
+            <div style={{ 
+              width: '20px', height: '20px', 
+              border: '2px solid #3b82f6', 
+              background: variant === 'classic' ? '#3b82f6' : 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              {variant === 'classic' && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+            </div>
+            KLASSISCH (STEVE)
+          </label>
+
+          <label 
+            onClick={() => setVariant('slim')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '12px', color: 'white' }}
+          >
+            <div style={{ 
+              width: '20px', height: '20px', 
+              border: '2px solid #555', 
+              background: variant === 'slim' ? '#3b82f6' : 'transparent',
+              borderColor: variant === 'slim' ? '#3b82f6' : '#555',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              {variant === 'slim' && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+            </div>
+            SCHLANK (ALEX)
+          </label>
+        </div>
+
+        <button 
+          className="btn" 
+          style={{ width: '100%', maxWidth: '250px', background: 'transparent', border: '1px solid #3b82f6', color: 'white', padding: '15px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'inherit' }}
+          onClick={() => onConfirm({ name, variant })}
         >
-          <option value="classic">Klassisch (Steve)</option>
-          <option value="slim">Schlank (Alex)</option>
-        </select>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
-        <button className="btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }} onClick={onCancel}>Abbrechen</button>
-        <button className="btn" onClick={() => onConfirm({ name, variant })}>Speichern</button>
+          ÄNDERUNGEN SPEICHERN
+        </button>
+
       </div>
     </div>
   );
@@ -448,7 +501,7 @@ function ActiveSkin3D({ url }: { url: string }) {
   return <canvas ref={canvasRef} style={{ width: '100px', height: '200px', display: 'block' }} />;
 }
 
-function Skin3DPreview({ base64 }: { base64: string }) {
+function Skin3DPreview({ base64, variant = 'classic' }: { base64: string, variant?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   useEffect(() => {
@@ -458,7 +511,8 @@ function Skin3DPreview({ base64 }: { base64: string }) {
       canvas: canvasRef.current,
       width: 150,
       height: 200,
-      skin: base64
+      skin: base64,
+      model: variant === 'slim' ? 'slim' : 'default'
     });
     
     viewer.animation = new IdleAnimation();
@@ -466,7 +520,7 @@ function Skin3DPreview({ base64 }: { base64: string }) {
     return () => {
       viewer.dispose();
     };
-  }, [base64]);
+  }, [base64, variant]);
   
-  return <canvas ref={canvasRef} style={{ width: '150px', height: '200px', display: 'block' }} />;
+  return <canvas ref={canvasRef} style={{ width: '150px', height: '200px', display: 'block', margin: '0 auto' }} />;
 }
