@@ -10,7 +10,7 @@ export interface Profile {
   name: string;
   version: string;
   loader: string;
-  loaderVersion?: string;
+  loader_version?: string;
   ram: number;
 }
 
@@ -75,7 +75,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
       await invoke('launch_game', {
         version: profile.version,
         loader: profile.loader || "vanilla",
-        loaderVersion: profile.loaderVersion || "0.16.2",
+        loaderVersion: profile.loader_version || "0.16.2",
         profileName: profile.name,
         ram: profile.ram || 2,
         creds: activeCreds

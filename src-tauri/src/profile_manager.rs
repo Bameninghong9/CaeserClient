@@ -3,7 +3,6 @@ pub mod profile_manager {
     use std::fs;
     use std::path::PathBuf;
     use tauri::AppHandle;
-    use tauri::Manager;
 
     #[derive(Serialize, Deserialize, Clone, Debug)]
     pub struct Profile {
@@ -11,21 +10,34 @@ pub mod profile_manager {
         pub name: String,
         pub version: String,
         pub loader: String,
+        pub loader_version: Option<String>,
         pub ram: f64,
     }
 
-    fn get_profiles_path() -> Result<std::path::PathBuf, String> {
+    #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+    pub struct Settings {
+        pub last_played_profile: Option<String>,
+    }
+
+    fn get_app_dir() -> Result<std::path::PathBuf, String> {
         let appdata = std::env::var("APPDATA").map_err(|_| "No APPDATA".to_string())?;
-        let path = std::path::PathBuf::from(appdata).join("CaeserClient").join("profiles.json");
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        let path = std::path::PathBuf::from(appdata).join("CaeserClient");
+        if !path.exists() {
+            std::fs::create_dir_all(&path).map_err(|e| e.to_string())?;
         }
         Ok(path)
     }
 
+    fn safe_write(path: &PathBuf, data: &str) -> Result<(), String> {
+        let temp_path = path.with_extension("tmp");
+        fs::write(&temp_path, data).map_err(|e| e.to_string())?;
+        fs::rename(&temp_path, path).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     #[tauri::command]
     pub async fn get_profiles(_app: AppHandle) -> Result<Vec<Profile>, String> {
-        let path = get_profiles_path()?;
+        let path = get_app_dir()?.join("profiles.json");
         if !path.exists() {
             return Ok(Vec::new());
         }
@@ -39,9 +51,29 @@ pub mod profile_manager {
 
     #[tauri::command]
     pub async fn save_profiles(_app: AppHandle, profiles: Vec<Profile>) -> Result<(), String> {
-        let path = get_profiles_path()?;
+        let path = get_app_dir()?.join("profiles.json");
         let data = serde_json::to_string_pretty(&profiles).map_err(|e| e.to_string())?;
-        fs::write(&path, data).map_err(|e| e.to_string())?;
-        Ok(())
+        safe_write(&path, &data)
+    }
+
+    #[tauri::command]
+    pub async fn get_settings(_app: AppHandle) -> Result<Settings, String> {
+        let path = get_app_dir()?.join("settings.json");
+        if !path.exists() {
+            return Ok(Settings::default());
+        }
+        let data = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        if data.trim().is_empty() {
+            return Ok(Settings::default());
+        }
+        let settings: Settings = serde_json::from_str(&data).unwrap_or_default();
+        Ok(settings)
+    }
+
+    #[tauri::command]
+    pub async fn save_settings(_app: AppHandle, settings: Settings) -> Result<(), String> {
+        let path = get_app_dir()?.join("settings.json");
+        let data = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+        safe_write(&path, &data)
     }
 }

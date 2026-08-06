@@ -6,16 +6,21 @@ import { Profile } from './Profiles';
 
 export default function Home({ activeCreds }: { activeCreds: Credentials | null }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [selectedProfileId, setSelectedProfileId] = useState<string>(localStorage.getItem('selectedProfileId') || '');
+  const [selectedProfileId, setSelectedProfileId] = useState<string>('');
   const [launching, setLaunching] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
-    invoke<Profile[]>('get_profiles')
-      .then(p => {
+    Promise.all([
+      invoke<Profile[]>('get_profiles'),
+      invoke<{ last_played_profile: string | null }>('get_settings')
+    ])
+      .then(([p, settings]) => {
         setProfiles(p);
-        if (p.length > 0 && !localStorage.getItem('selectedProfileId')) {
+        if (settings.last_played_profile && p.find(x => x.id === settings.last_played_profile)) {
+          setSelectedProfileId(settings.last_played_profile);
+        } else if (p.length > 0) {
           setSelectedProfileId(p[0].id);
         }
       })
@@ -24,7 +29,7 @@ export default function Home({ activeCreds }: { activeCreds: Credentials | null 
 
   useEffect(() => {
     if (selectedProfileId) {
-      localStorage.setItem('selectedProfileId', selectedProfileId);
+      invoke('save_settings', { settings: { last_played_profile: selectedProfileId } }).catch(console.error);
     }
   }, [selectedProfileId]);
 
@@ -46,7 +51,7 @@ export default function Home({ activeCreds }: { activeCreds: Credentials | null 
       await invoke('launch_game', { 
         version: selectedProfile.version, 
         loader: selectedProfile.loader || "vanilla",
-        loaderVersion: selectedProfile.loaderVersion || "",
+        loaderVersion: selectedProfile.loader_version || "",
         profileName: selectedProfile.name,
         ram: selectedProfile.ram || 2048,
         creds: activeCreds 

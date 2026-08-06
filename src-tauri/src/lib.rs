@@ -322,6 +322,8 @@ pub fn run() {
             install_mod,
             profile_manager::profile_manager::get_profiles,
             profile_manager::profile_manager::save_profiles,
+            profile_manager::profile_manager::get_settings,
+            profile_manager::profile_manager::save_settings,
             auth::get_accounts,
             auth::save_accounts,
             get_installed_mods,

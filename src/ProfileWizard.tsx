@@ -29,6 +29,7 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
         name,
         version,
         loader,
+        loader_version: loader.toLowerCase() === 'fabric' ? '0.19.3' : undefined,
         ram
       });
     } else {
