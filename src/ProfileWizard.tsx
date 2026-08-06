@@ -8,7 +8,7 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
   const [version, setVersion] = useState(cachedVersions.length > 0 ? cachedVersions[0] : '');
   const [loader, setLoader] = useState('Vanilla');
   const [name, setName] = useState('');
-  const [ram, setRam] = useState(4);
+  const [ram, setRam] = useState(4096);
 
   useEffect(() => {
     // If cachedVersions was empty initially but gets updated (though it shouldn't be, it's preloaded)
@@ -189,16 +189,41 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
               value={name} 
               onChange={e => setName(e.target.value)} 
             />
-            <div className="slider-container" style={{ marginTop: '20px' }}>
-              <label>Arbeitsspeicher (RAM): {ram} GB</label>
-              <input 
-                type="range" 
-                min="1" 
-                max="32" 
-                value={ram} 
-                onChange={e => setRam(parseInt(e.target.value))} 
-                className="range-slider"
-              />
+            <div className="slider-container" style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ color: '#94a3b8', fontSize: '13px' }}>Empfohlen: 4096 MB</div>
+              <div style={{ color: 'white', fontSize: '15px', fontWeight: 'bold' }}>
+                {ram} MB ({ (ram / 1024).toFixed(1).replace('.0', '') } GB)
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '12px', marginTop: '10px' }}>
+                <span>1 GB</span>
+                <span style={{ position: 'absolute', left: `calc(${(ram - 1024) / (16384 - 1024) * 100}% - 30px)`, textAlign: 'center', width: '60px' }}>
+                  {ram} MB
+                </span>
+                <span>16384 MB</span>
+              </div>
+              
+              <div className="range-slider-wrapper" style={{ position: 'relative', width: '100%', marginTop: '5px' }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  height: '4px',
+                  background: '#3b82f6',
+                  width: `${(ram - 1024) / (16384 - 1024) * 100}%`,
+                  zIndex: 1,
+                  pointerEvents: 'none'
+                }}></div>
+                <input 
+                  type="range" 
+                  min="1024" 
+                  max="16384" 
+                  step="512"
+                  value={ram} 
+                  onChange={e => setRam(parseInt(e.target.value))} 
+                  className="range-slider"
+                />
+              </div>
             </div>
           </>
         )}

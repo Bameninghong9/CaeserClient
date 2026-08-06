@@ -209,7 +209,8 @@ pub async fn launch_minecraft(
     args.push(format!("-Dcaeserclient.profileVersion={}", version));
 
     // Performance & RAM optimizations (G1GC + Memory)
-    args.push(format!("-Xmx{}G", ram)); // Since ram is in GB from frontend usually, or MB? Wait, activeProfile.ram is GB in CaeserClient.
+    let ram_mb = if ram <= 128 { ram * 1024 } else { ram };
+    args.push(format!("-Xmx{}M", ram_mb));
     args.push("-XX:+UnlockExperimentalVMOptions".to_string());
     args.push("-XX:+UseG1GC".to_string());
     args.push("-XX:G1NewSizePercent=20".to_string());

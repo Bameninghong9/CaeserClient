@@ -197,7 +197,7 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
             <div className="profile-badges" style={{ marginTop: '10px' }}>
               <span className="badge">{activeProfile.version}</span>
               <span className="badge">{activeProfile.loader}</span>
-              <span className="badge">{activeProfile.ram} GB RAM</span>
+              <span className="badge">{activeProfile.ram > 128 ? (activeProfile.ram / 1024).toFixed(1).replace('.0', '') : activeProfile.ram} GB RAM</span>
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
