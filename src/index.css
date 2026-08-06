@@ -3,14 +3,15 @@
   color: #ffffff;
   background-color: transparent;
   
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(11, 19, 43, 0.7);
+  --glass-border: rgba(65, 105, 225, 0.3);
   --accent-color: #3b82f6;
   --accent-hover: #60a5fa;
   --danger-color: #ef4444;
   --danger-hover: #f87171;
-  --surface-color: #1e293b;
-  --bg-color: rgba(15, 23, 42, 0.92);
+  --surface-color: #080f22;
+  --bg-color: #050a16;
+  --modal-bg: #0d1730;
 }
 
 html {
@@ -27,8 +28,8 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   user-select: none;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0px;
+  border: 1px solid rgba(65, 105, 225, 0.2);
   transition: border-radius 0.2s;
 }
 
@@ -52,20 +53,17 @@ body.maximized {
   color: white;
   border: none;
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
   position: relative;
   overflow: hidden;
 }
 
 .btn:hover:not(:disabled) {
   background: var(--accent-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
 }
 
 .btn:active:not(:disabled) {
@@ -391,9 +389,9 @@ body.maximized {
 }
 
 .version-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
   padding: 16px;
   cursor: pointer;
   transition: all 0.2s;
@@ -410,8 +408,7 @@ body.maximized {
 
 .version-card.selected {
   border-color: var(--accent-color);
-  background: rgba(59, 130, 246, 0.1);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.05);
 }
 
 .version-title {
@@ -461,9 +458,9 @@ body.maximized {
 
 /* Profiles */
 .profile-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.2s;
@@ -473,7 +470,8 @@ body.maximized {
 }
 
 .profile-card:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(65, 105, 225, 0.3);
   transform: translateY(-2px);
 }
 
@@ -557,13 +555,47 @@ body.maximized {
 }
 
 .wizard-content {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 30px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.wizard-modal {
+  background: var(--modal-bg);
+  border: 1px solid rgba(65, 105, 225, 0.4);
+  border-radius: 4px;
+  width: 600px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+  font-family: 'Inter', monospace, sans-serif;
+}
+
+.wizard-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.wizard-close-btn {
+  background: white;
+  border: none;
+  color: var(--modal-bg);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.wizard-close-btn:hover {
+  opacity: 0.8;
 }
 
 .wizard-actions {

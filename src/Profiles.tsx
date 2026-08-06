@@ -173,13 +173,7 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
 
   const installedModsList = Object.values(installedMods);
 
-  if (showWizard) {
-    return (
-      <div className="main-content">
-        <ProfileWizard onComplete={handleCreateProfile} onCancel={() => setShowWizard(false)} />
-      </div>
-    );
-  }
+
 
   if (activeProfile) {
     return (
@@ -450,6 +444,12 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
           </div>
         ))}
       </div>
+
+      {showWizard && (
+        <div className="custom-modal-overlay">
+          <ProfileWizard onComplete={handleCreateProfile} onCancel={() => setShowWizard(false)} />
+        </div>
+      )}
     </div>
   );
 }

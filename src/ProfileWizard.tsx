@@ -37,17 +37,22 @@ export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (p
     }
   };
 
+  const getTitle = () => {
+    if (step === 1) return "MINECRAFT VERSION WÄHLEN";
+    if (step === 2) return "SPIELVERSION WÄHLEN";
+    return "PROFILDETAILS";
+  };
+
   return (
-    <div className="wizard-container">
-      <h2>Profil erstellen</h2>
-      
-      <div className="wizard-steps">
-        <div className={`wizard-step ${step >= 1 ? 'completed' : ''} ${step === 1 ? 'active' : ''}`}>1</div>
-        <div className={`wizard-step ${step >= 2 ? 'completed' : ''} ${step === 2 ? 'active' : ''}`}>2</div>
-        <div className={`wizard-step ${step >= 3 ? 'completed' : ''} ${step === 3 ? 'active' : ''}`}>3</div>
+    <div className="wizard-modal">
+      <div className="wizard-modal-header">
+        <h2 style={{ fontSize: '14px', margin: 0, letterSpacing: '2px' }}>{getTitle()}</h2>
+        <button className="wizard-close-btn" onClick={onCancel}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
 
-      <div className="wizard-content">
+      <div className="wizard-content" style={{ padding: '20px', border: 'none', background: 'transparent' }}>
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -194,17 +199,19 @@ export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (p
         )}
       </div>
 
-      <div className="wizard-actions">
-        <button className="btn" style={{ background: 'transparent', color: 'white', border: '1px solid var(--glass-border)' }} onClick={onCancel}>
-          Abbrechen
-        </button>
+      <div className="wizard-actions" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '15px 20px', margin: 0 }}>
         {step > 1 && (
-          <button className="btn" style={{ background: 'transparent', color: 'white', border: '1px solid var(--glass-border)' }} onClick={() => setStep(step - 1)}>
-            Zurück
+          <button className="btn" style={{ background: 'transparent', color: 'white', border: '1px solid var(--glass-border)', marginRight: 'auto' }} onClick={() => setStep(step - 1)}>
+            ZURÜCK
           </button>
         )}
-        <button className="btn" onClick={handleNext} disabled={(step === 1 && !version) || (step === 3 && !name)}>
-          {step === 3 ? 'Erstellen' : 'Weiter'}
+        <button 
+          className="btn" 
+          onClick={handleNext} 
+          disabled={(step === 1 && !version) || (step === 3 && !name)}
+          style={{ padding: '8px 24px', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase', background: 'transparent', border: '1px solid var(--accent-color)' }}
+        >
+          {step === 3 ? 'ERSTELLEN' : 'WEITER'} &rarr;
         </button>
       </div>
     </div>
