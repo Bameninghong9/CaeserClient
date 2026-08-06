@@ -237,6 +237,8 @@ pub async fn launch_minecraft(
     args.push(access_token.to_string());
     args.push("--userType".to_string());
     args.push("msa".to_string());
+    args.push("--versionType".to_string());
+    args.push(format!("Caeser Client - {}", profile_name));
 
     let mut child = Command::new("java")
         .args(args)
