@@ -14,6 +14,7 @@ pub async fn launch_minecraft(
     loader: &str,
     loader_version: &str,
     profile_name: &str,
+    ram: u32,
     username: &str,
     uuid: &str,
     access_token: &str,
@@ -206,6 +207,16 @@ pub async fn launch_minecraft(
     args.push(format!("-Djava.library.path={}", natives_dir.to_string_lossy()));
     args.push(format!("-Dcaeserclient.profileName={}", profile_name));
     args.push(format!("-Dcaeserclient.profileVersion={}", version));
+
+    // Performance & RAM optimizations (G1GC + Memory)
+    args.push(format!("-Xmx{}G", ram)); // Since ram is in GB from frontend usually, or MB? Wait, activeProfile.ram is GB in CaeserClient.
+    args.push("-XX:+UnlockExperimentalVMOptions".to_string());
+    args.push("-XX:+UseG1GC".to_string());
+    args.push("-XX:G1NewSizePercent=20".to_string());
+    args.push("-XX:G1ReservePercent=20".to_string());
+    args.push("-XX:MaxGCPauseMillis=50".to_string());
+    args.push("-XX:G1HeapRegionSize=32M".to_string());
+
     args.push("-cp".to_string());
     args.push(cp_string);
     args.push(main_class.to_string());

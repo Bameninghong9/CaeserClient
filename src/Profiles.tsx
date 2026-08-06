@@ -65,6 +65,7 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
         loader: activeProfile.loader || "vanilla",
         loaderVersion: activeProfile.loaderVersion || "0.16.2",
         profileName: activeProfile.name,
+        ram: activeProfile.ram || 2,
         creds: activeCreds
       });
       

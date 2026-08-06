@@ -59,6 +59,7 @@ async fn launch_game(
     loader: String, 
     loader_version: String, 
     profile_name: String,
+    ram: u32,
     creds: serde_json::Value
 ) -> Result<(), String> {
     let username = creds.get("username").and_then(|u| u.as_str()).unwrap_or("Player").to_string();
@@ -96,7 +97,7 @@ async fn launch_game(
         // Otherwise, initial events (like instance-started) will be lost if the window was just created.
         tokio::time::sleep(std::time::Duration::from_millis(800)).await;
 
-        if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), instance_id_clone, &version, &loader, &loader_version, &profile_name, &username, &uuid, &access_token).await {
+        if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), instance_id_clone, &version, &loader, &loader_version, &profile_name, ram, &username, &uuid, &access_token).await {
             let _ = app.emit("game-log", serde_json::json!({
                 "instance_id": "ERROR",
                 "line": format!("[ERROR] Failed to launch: {}", e)
