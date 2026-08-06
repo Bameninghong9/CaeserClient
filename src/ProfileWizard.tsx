@@ -81,41 +81,47 @@ export default function ProfileWizard({ onComplete, onCancel }: { onComplete: (p
               overflowY: 'auto',
               paddingRight: '10px'
             }}>
-              {versions.filter(v => v.toLowerCase().includes(versionSearch.toLowerCase())).map(v => (
-                <div 
-                  key={v} 
-                  onClick={() => setVersion(v)}
-                  style={{
-                    background: version === v ? 'transparent' : '#0f172a',
-                    border: version === v ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.05)',
-                    borderRadius: '8px',
-                    padding: '20px 10px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s',
-                    boxShadow: version === v ? '0 0 15px rgba(59,130,246,0.3) inset' : 'none'
-                  }}
-                  onMouseOver={(e) => {
-                    if (version !== v) {
-                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
-                      e.currentTarget.style.background = '#1e293b';
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (version !== v) {
-                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.05)';
-                      e.currentTarget.style.background = '#0f172a';
-                    }
-                  }}
-                >
-                  <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'monospace' }}>{v}</div>
-                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Release</div>
+              {versions.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', letterSpacing: '1px' }}>
+                  LADE VERSIONEN...
                 </div>
-              ))}
+              ) : (
+                versions.filter(v => v.toLowerCase().includes(versionSearch.toLowerCase())).map(v => (
+                  <div 
+                    key={v} 
+                    onClick={() => setVersion(v)}
+                    style={{
+                      background: version === v ? 'transparent' : '#0f172a',
+                      border: version === v ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.05)',
+                      borderRadius: '8px',
+                      padding: '20px 10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      transition: 'all 0.2s',
+                      boxShadow: version === v ? '0 0 15px rgba(59,130,246,0.3) inset' : 'none'
+                    }}
+                    onMouseOver={(e) => {
+                      if (version !== v) {
+                        e.currentTarget.style.border = '1px solid rgba(255,255,255,0.2)';
+                        e.currentTarget.style.background = '#1e293b';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (version !== v) {
+                        e.currentTarget.style.border = '1px solid rgba(255,255,255,0.05)';
+                        e.currentTarget.style.background = '#0f172a';
+                      }
+                    }}
+                  >
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'monospace' }}>{v}</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Release</div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
