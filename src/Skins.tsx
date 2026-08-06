@@ -347,12 +347,13 @@ function LocalSkinCard({ skin, onApply, onDelete, loading }: { skin: LocalSkin, 
 }
 
 function ActiveSkin3D({ url }: { url: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!canvasRef.current) return;
     
     const viewer = new SkinViewer({
+      canvas: canvasRef.current,
       width: 100,
       height: 200,
       skin: url
@@ -360,27 +361,22 @@ function ActiveSkin3D({ url }: { url: string }) {
     
     viewer.animation = new IdleAnimation();
     
-    const canvas = viewer.canvas;
-    containerRef.current.appendChild(canvas);
-    
     return () => {
       viewer.dispose();
-      if (containerRef.current && containerRef.current.contains(canvas)) {
-        containerRef.current.removeChild(canvas);
-      }
     };
   }, [url]);
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%' }}></div>;
+  return <canvas ref={canvasRef} style={{ width: '100px', height: '200px', display: 'block' }} />;
 }
 
 function Skin3DPreview({ base64 }: { base64: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!canvasRef.current) return;
     
     const viewer = new SkinViewer({
+      canvas: canvasRef.current,
       width: 150,
       height: 200,
       skin: base64
@@ -388,16 +384,10 @@ function Skin3DPreview({ base64 }: { base64: string }) {
     
     viewer.animation = new IdleAnimation();
     
-    const canvas = viewer.canvas;
-    containerRef.current.appendChild(canvas);
-    
     return () => {
       viewer.dispose();
-      if (containerRef.current && containerRef.current.contains(canvas)) {
-        containerRef.current.removeChild(canvas);
-      }
     };
   }, [base64]);
   
-  return <div ref={containerRef} style={{ width: '150px', height: '200px' }} />;
+  return <canvas ref={canvasRef} style={{ width: '150px', height: '200px', display: 'block' }} />;
 }
