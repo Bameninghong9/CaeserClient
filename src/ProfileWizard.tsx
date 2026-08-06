@@ -195,7 +195,7 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
                 {ram} MB ({ (ram / 1024).toFixed(1).replace('.0', '') } GB)
               </div>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '12px', marginTop: '10px' }}>
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '12px', marginTop: '10px' }}>
                 <span>1 GB</span>
                 <span style={{ position: 'absolute', left: `calc(${(ram - 1024) / (16384 - 1024) * 100}% - 30px)`, textAlign: 'center', width: '60px' }}>
                   {ram} MB
