@@ -64,28 +64,28 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
       .catch(e => console.error("Failed to delete profile:", e));
   };
 
-  const handlePlay = async () => {
-    if (!activeProfile) return;
+  const launchProfile = async (profile: Profile) => {
     setIsLaunching(true);
-
     try {
       await invoke('launch_game', {
-        version: activeProfile.version,
-        loader: activeProfile.loader || "vanilla",
-        loaderVersion: activeProfile.loaderVersion || "0.16.2",
-        profileName: activeProfile.name,
-        ram: activeProfile.ram || 2,
+        version: profile.version,
+        loader: profile.loader || "vanilla",
+        loaderVersion: profile.loaderVersion || "0.16.2",
+        profileName: profile.name,
+        ram: profile.ram || 2,
         creds: activeCreds
       });
-      
     } catch (e) {
       console.error("Failed to launch game", e);
       alert("Fehler beim Starten: " + e);
     } finally {
-      // Wait a bit before resetting to simulate game running, 
-      // or we can keep it launching until the game exits.
       setTimeout(() => setIsLaunching(false), 3000); 
     }
+  };
+
+  const handlePlay = async () => {
+    if (!activeProfile) return;
+    return launchProfile(activeProfile);
   };
 
   const handleToggleInstall = async (mod: ModData) => {
@@ -413,8 +413,7 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
 
   return (
     <div className="main-content">
-      <div className="profile-header">
-        <h1 className="hero-title">Profile</h1>
+      <div className="profile-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '10px' }}>
           <input
             type="text"
@@ -422,34 +421,130 @@ export default function Profiles({ activeCreds }: { activeCreds: Credentials | n
             placeholder="Profile durchsuchen..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ padding: '8px 12px', fontSize: '14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.3)', color: 'white', width: '250px' }}
+            style={{ padding: '8px 12px', fontSize: '14px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.3)', color: 'white', width: '250px' }}
           />
-          <button className="btn" onClick={() => setShowWizard(true)}>
-            Profil erstellen
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px'}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            IMPORTIEREN
+          </button>
+          <button className="btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase' }} onClick={() => setShowWizard(true)}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px'}}><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            ERSTELLEN
           </button>
         </div>
       </div>
       
-      <div className="version-grid" style={{ marginTop: '20px' }}>
-        {profiles.length === 0 && <p>Keine Profile vorhanden. Erstelle eins!</p>}
-        {profiles.length > 0 && filteredProfiles.length === 0 && <p>Kein Profil mit diesem Namen gefunden.</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {profiles.length === 0 && <p style={{ color: '#94a3b8' }}>Keine Profile vorhanden. Erstelle eins!</p>}
+        {profiles.length > 0 && filteredProfiles.length === 0 && <p style={{ color: '#94a3b8' }}>Kein Profil mit diesem Namen gefunden.</p>}
         {filteredProfiles.map(p => (
-          <div key={p.id} className="profile-card" onClick={() => setActiveProfile(p)} style={{ position: 'relative' }}>
-            <button
-              onClick={(e) => handleDeleteProfile(e, p.id)}
-              style={{
-                position: 'absolute', top: '10px', right: '10px',
-                background: 'transparent', border: 'none', color: '#f56565',
-                cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}
-              title="Profil löschen"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-            </button>
-            <h3>{p.name}</h3>
-            <div className="profile-badges">
-              <span className="badge">{p.version}</span>
-              <span className="badge">{p.loader}</span>
+          <div 
+            key={p.id} 
+            onClick={() => setActiveProfile(p)} 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              padding: '16px 20px', 
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ 
+                width: '48px', height: '48px', 
+                background: 'rgba(59, 130, 246, 0.1)', 
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '8px', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#3b82f6'
+              }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>{p.name}</h3>
+                <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: '#94a3b8', alignItems: 'center' }}>
+                  <span>{p.version}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+                  <span>{p.loader}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                className="btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  launchProfile(p);
+                }}
+                style={{ background: 'transparent', border: '1px solid rgba(59, 130, 246, 0.5)', padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                SPIELEN
+              </button>
+
+              <button
+                className="btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveProfile(p);
+                  setShowModBrowser(true);
+                }}
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                MODS
+              </button>
+              
+              <button
+                onClick={(e) => handleDeleteProfile(e, p.id)}
+                style={{
+                  background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#f56565',
+                  cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: '4px', transition: 'all 0.2s', height: '34px', width: '34px'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(245, 101, 101, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(245, 101, 101, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                }}
+                title="Profil löschen"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              </button>
             </div>
           </div>
         ))}
