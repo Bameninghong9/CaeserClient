@@ -9,9 +9,14 @@
   --accent-hover: #60a5fa;
   --danger-color: #ef4444;
   --danger-hover: #f87171;
-  --surface-color: #080f22;
-  --bg-color: #050a16;
+  --surface-color: rgba(8, 15, 34, 0.7);
+  --bg-color: rgba(5, 10, 22, 0.6);
   --modal-bg: #0d1730;
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.4);
+  color: white;
 }
 
 html {
@@ -212,7 +217,7 @@ body.maximized {
 .window-btn {
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--accent-color);
   width: 50px;
   height: 100%;
   display: flex;
@@ -226,8 +231,13 @@ body.maximized {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.window-btn.close {
+  color: var(--danger-color);
+}
+
 .window-btn.close:hover {
   background: #e81123;
+  color: white;
 }
 
 /* Account Dropdown */

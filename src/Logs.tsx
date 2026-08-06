@@ -31,7 +31,8 @@ const btnStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   padding: '4px',
-  borderRadius: '4px'
+  borderRadius: '4px',
+  color: 'var(--accent-color)'
 };
 
 const levelColors: Record<LogLevel, string> = {
@@ -324,9 +325,7 @@ export default function Logs() {
     }}>
       <div data-tauri-drag-region 
         onPointerDown={(e) => {
-          if (e.target === e.currentTarget) {
-            getCurrentWindow().startDragging();
-          }
+          getCurrentWindow().startDragging();
         }}
         style={{
         height: '40px',
@@ -349,7 +348,7 @@ export default function Logs() {
           <button style={btnStyle} onClick={() => invoke('maximize_window')} className="window-hover">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
           </button>
-          <button style={{ ...btnStyle }} onClick={() => invoke('close_window')} className="window-hover-close">
+          <button style={{ ...btnStyle, color: '#f44747' }} onClick={() => invoke('close_window')} className="window-hover-close">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
@@ -413,7 +412,8 @@ export default function Logs() {
               fontSize: '12px',
               lineHeight: 1.5,
               background: '#0d1117',
-              userSelect: 'text'
+              userSelect: 'text',
+              WebkitUserSelect: 'text'
             }}
             className="custom-scrollbar"
           >
