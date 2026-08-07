@@ -312,11 +312,39 @@ async fn install_mod(
     // Download the file
     let file_path = target_dir.join(&filename);
     let mut response = reqwest::get(&download_url).await.map_err(|e| e.to_string())?;
+    
+    let total_size = response.content_length().unwrap_or(0);
+    let mut downloaded = 0u64;
+    
     let mut file = tokio::fs::File::create(&file_path).await.map_err(|e| e.to_string())?;
     
+    use sha1::{Sha1, Digest};
+    let mut hasher = Sha1::new();
+    use tauri::Emitter;
+
+    #[derive(Clone, serde::Serialize)]
+    struct DownloadProgressPayload {
+        id: String,
+        progress: f64,
+    }
+
     while let Some(chunk) = response.chunk().await.map_err(|e| e.to_string())? {
         file.write_all(&chunk).await.map_err(|e| e.to_string())?;
+        hasher.update(&chunk);
+        
+        if total_size > 0 {
+            downloaded += chunk.len() as u64;
+            let progress = (downloaded as f64 / total_size as f64) * 100.0;
+            let _ = app.emit("download-progress", DownloadProgressPayload {
+                id: mod_info.id.clone(),
+                progress,
+            });
+        }
     }
+    
+    let hash_bytes = hasher.finalize();
+    let _hash_result: String = hash_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    // We could verify the hash here if we had the expected hash from the API.
     
     // Save ModData to installed_mods.json
     let metadata_path = profile_dir.join("installed_mods.json");
@@ -416,6 +444,7 @@ pub fn run() {
             get_installed_mods,
             toggle_mod_file,
             delete_mod_file,
+            open_profile_folder,
             skin_manager::get_local_skins,
             skin_manager::add_local_skin,
             skin_manager::remove_local_skin,
@@ -426,6 +455,23 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+async fn open_profile_folder(profile_name: String) -> Result<(), String> {
+    let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
+    let app_dir = std::path::PathBuf::from(appdata).join("CaeserClient");
+    let profile_dir = app_dir.join("profiles").join(&profile_name);
+    
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(profile_dir)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    
+    Ok(())
 }
 
 #[tauri::command]

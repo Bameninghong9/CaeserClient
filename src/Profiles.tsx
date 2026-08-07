@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import ProfileWizard from './ProfileWizard';
 import ModBrowser, { ModData } from './ModBrowser';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { Credentials } from './App';
 
 export interface Profile {
@@ -23,7 +24,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
   
   // State for installed mods (ID -> ModData)
   const [installedMods, setInstalledMods] = useState<Record<string, ModData>>({});
-  const [downloadingMods, setDownloadingMods] = useState<Record<string, boolean>>({});
+  const [downloadingMods, setDownloadingMods] = useState<Record<string, boolean | number>>({});
 
   const [deleteProfileId, setDeleteProfileId] = useState<string | null>(null);
 
@@ -40,6 +41,18 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
       setModBrowserType(null);
     }
   }, [resetTrigger]);
+
+  useEffect(() => {
+    const unlisten = listen<{ id: string, progress: number }>('download-progress', (event) => {
+      setDownloadingMods(prev => ({
+        ...prev,
+        [event.payload.id]: event.payload.progress
+      }));
+    });
+    return () => {
+      unlisten.then(f => f());
+    };
+  }, []);
 
   // Load profiles and versions on mount
   useEffect(() => {
@@ -229,8 +242,8 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
               {isLaunching ? 'STARTE...' : 'SPIELEN'}
             </button>
-            <button style={{ width: '46px', height: '46px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <button onClick={() => invoke('open_profile_folder', { profileName: activeProfile.name }).catch(console.error)} style={{ width: '46px', height: '46px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }} title="Profilordner öffnen">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
             </button>
           </div>
         </div>
@@ -323,8 +336,10 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
                 }
                 
                 return (
-                  <div className="content-grid">
-                    {filteredInstalled.map(mod => {
+                  <>
+                    <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.1)', marginBottom: '16px' }}></div>
+                    <div className="content-grid">
+                      {filteredInstalled.map(mod => {
                       let displayVersion = mod.version;
                       let isDisabled = false;
                       if (!displayVersion) {
@@ -360,7 +375,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
                       });
                       
                       return (
-                      <div key={mod.id} style={{ 
+                      <div key={mod.id} className="mod-card" style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'space-between',
@@ -407,7 +422,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
                       const isDisabled = fileName.endsWith('.disabled');
                       const cleanFileName = fileName.replace(/\.disabled$/, '');
                       return (
-                      <div key={`local-${idx}`} style={{ 
+                      <div key={`local-${idx}`} className="mod-card" style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'space-between',
@@ -447,6 +462,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
                       </div>
                     )})}
                   </div>
+                  </>
                 );
               })()
             }

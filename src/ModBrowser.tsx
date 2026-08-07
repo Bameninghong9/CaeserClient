@@ -26,7 +26,7 @@ export default function ModBrowser({
 }: { 
   onClose: () => void, 
   installedMods: Record<string, ModData>,
-  downloadingMods: Record<string, boolean>,
+  downloadingMods: Record<string, boolean | number>,
   onToggleInstall: (mod: ModData) => void,
   itemType?: 'mod' | 'resourcepack' | 'shader'
 }) {
@@ -151,7 +151,11 @@ export default function ModBrowser({
                   onClick={() => onToggleInstall(mod)}
                   disabled={downloadingMods[mod.id]}
                 >
-                  {downloadingMods[mod.id] ? 'Lade...' : installedMods[mod.id] ? 'Installiert ✓' : 'Installieren'}
+                  {typeof downloadingMods[mod.id] === 'number' 
+                    ? `Lade... ${Math.round(downloadingMods[mod.id] as number)}%` 
+                    : downloadingMods[mod.id] 
+                      ? 'Lade...' 
+                      : installedMods[mod.id] ? 'Installiert ✓' : 'Installieren'}
                 </button>
               </div>
             </div>

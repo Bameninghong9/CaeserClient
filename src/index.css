@@ -315,7 +315,7 @@ body.maximized {
 
 /* Sidebar */
 .sidebar {
-  width: 180px;
+  width: 140px;
   background: rgba(15, 23, 42, 0.4);
   border-right: 1px solid var(--glass-border);
   display: flex;
@@ -994,12 +994,22 @@ body.maximized {
   width: 100%;
 }
 
-body.maximized .content-grid {
-  grid-template-columns: repeat(3, 1fr);
+@media (min-width: 1200px) {
+  .content-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .log-titlebar-drag button,
 .log-titlebar-drag .no-drag {
   -webkit-app-region: no-drag;
 }
-
+.mod-card {
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.mod-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
