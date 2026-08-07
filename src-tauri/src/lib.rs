@@ -3,6 +3,15 @@ pub mod minecraft;
 
 use auth::{login_begin_direct_oauth, login_finish_direct_oauth, start_oauth_callback_server, Credentials};
 use tauri::{AppHandle, Emitter};
+use std::sync::{Arc, Mutex};
+
+#[derive(Default)]
+struct InstanceCount(Arc<Mutex<u32>>);
+
+#[tauri::command]
+fn get_instance_count(state: tauri::State<InstanceCount>) -> u32 {
+    *state.0.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 #[tauri::command]
 async fn login(app: AppHandle) -> Result<(), String> {
@@ -61,15 +70,15 @@ async fn launch_game(
     loader_version: String, 
     profile_name: String,
     ram: u32,
-    creds: serde_json::Value
+    creds: serde_json::Value,
+    state: tauri::State<'_, InstanceCount>,
 ) -> Result<(), String> {
     let username = creds.get("username").and_then(|u| u.as_str()).unwrap_or("Player").to_string();
     let uuid = creds.get("id").and_then(|u| u.as_str()).unwrap_or("dummy_uuid").to_string();
     let access_token = creds.get("access_token").and_then(|u| u.as_str()).unwrap_or("dummy_token").to_string();
     
-    // Log window removed per user request
-
     let instance_id = uuid::Uuid::new_v4().simple().to_string();
+    let counter = state.0.clone();
 
     // Open log window
     let window_label = "logs_window";
@@ -85,7 +94,7 @@ async fn launch_game(
         .title("Minecraft Logs")
         .inner_size(1050.0, 700.0)
         .decorations(false)
-        .transparent(true)
+        .transparent(false)
         .center()
         .build() {
             println!("Failed to create log window: {}", e);
@@ -95,10 +104,9 @@ async fn launch_game(
     let instance_id_clone = instance_id.clone();
     tauri::async_runtime::spawn(async move {
         // Delay to ensure the log window's React frontend has time to mount and register event listeners.
-        // Otherwise, initial events (like instance-started) will be lost if the window was just created.
         tokio::time::sleep(std::time::Duration::from_millis(800)).await;
 
-        if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), instance_id_clone, &version, &loader, &loader_version, &profile_name, ram, &username, &uuid, &access_token).await {
+        if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), instance_id_clone, &version, &loader, &loader_version, &profile_name, ram, &username, &uuid, &access_token, counter).await {
             let _ = app.emit("game-log", serde_json::json!({
                 "instance_id": "ERROR",
                 "line": format!("[ERROR] Failed to launch: {}", e)
@@ -131,6 +139,41 @@ async fn maximize_window(window: tauri::Window) {
 #[tauri::command]
 async fn close_window(window: tauri::Window) {
     let _ = window.close();
+}
+
+#[tauri::command]
+async fn hide_window(window: tauri::Window) {
+    let _ = window.hide();
+}
+
+#[tauri::command]
+async fn open_log_window(app: AppHandle) -> Result<(), String> {
+    let window_label = "logs_window";
+    if let Some(win) = app.get_webview_window(window_label) {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return Ok(());
+    } else {
+        if let Err(e) = tauri::WebviewWindowBuilder::new(
+            &app,
+            window_label,
+            tauri::WebviewUrl::App("index.html?window=logs".into())
+        )
+        .title("Minecraft Logs")
+        .inner_size(1050.0, 700.0)
+        .decorations(false)
+        .transparent(false)
+        .center()
+        .build() {
+            return Err(format!("Failed to create log window: {}", e));
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn exit_app(app: AppHandle) {
+    app.exit(0);
 }
 
 use tauri::Manager;
@@ -317,14 +360,19 @@ async fn get_installed_mods(profile_name: String) -> Result<InstalledModsRespons
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .manage(InstanceCount::default())
         .invoke_handler(tauri::generate_handler![
             login, 
             get_versions, 
             launch_game,
+            get_instance_count,
             minimize_window,
             show_window,
             maximize_window,
             close_window,
+            hide_window,
+            open_log_window,
+            exit_app,
             install_mod,
             profile_manager::profile_manager::get_profiles,
             profile_manager::profile_manager::save_profiles,

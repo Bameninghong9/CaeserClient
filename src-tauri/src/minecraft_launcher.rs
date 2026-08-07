@@ -18,7 +18,12 @@ pub async fn launch_minecraft(
     username: &str,
     uuid: &str,
     access_token: &str,
+    instance_counter: std::sync::Arc<std::sync::Mutex<u32>>,
 ) -> Result<(), String> {
+    {
+        let mut count = instance_counter.lock().unwrap_or_else(|e| e.into_inner());
+        *count += 1;
+    }
     let _ = app.emit("instance-started", serde_json::json!({
         "instance_id": instance_id,
         "profile_name": profile_name,
@@ -307,6 +312,10 @@ pub async fn launch_minecraft(
     let enc3 = shared_encoder.clone();
     tauri::async_runtime::spawn(async move {
         let _ = child.wait();
+        {
+            let mut count = instance_counter.lock().unwrap_or_else(|e| e.into_inner());
+            if *count > 0 { *count -= 1; }
+        }
         let _ = app.emit("instance-stopped", serde_json::json!({ "instance_id": instance_id }));
         if let Ok(mut enc) = enc3.lock() {
             let _ = enc.try_finish();

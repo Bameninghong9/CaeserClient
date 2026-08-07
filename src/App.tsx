@@ -48,14 +48,18 @@ function Titlebar({
   activeSkinUrl,
   onLogout, 
   onLogin, 
-  onSelectAccount 
+  onSelectAccount,
+  runningInstances,
+  onOpenLogs
 }: { 
   accounts: Credentials[], 
   activeAccountId: string | null,
   activeSkinUrl: string | null,
   onLogout: (id: string) => void, 
   onLogin: () => void,
-  onSelectAccount: (id: string) => void
+  onSelectAccount: (id: string) => void,
+  runningInstances: number,
+  onOpenLogs: () => void
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
@@ -83,6 +87,30 @@ function Titlebar({
         Caeser Client
       </div>
       <div className="titlebar-right">
+        <button 
+          className="instance-btn"
+          onClick={onOpenLogs}
+          title="Instanzen anzeigen"
+          style={{
+            background: runningInstances > 0 ? 'rgba(46, 160, 67, 0.15)' : 'rgba(255,255,255,0.05)',
+            border: runningInstances > 0 ? '1px solid rgba(46, 160, 67, 0.4)' : '1px solid rgba(255,255,255,0.1)',
+            color: runningInstances > 0 ? '#2ea043' : '#8b949e',
+            padding: '4px 12px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginRight: '10px',
+            transition: 'all 0.2s ease',
+            letterSpacing: '0.5px'
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 14H7v-2h2v2zm0-4H7V8h2v2zm4 4h-2v-2h2v2zm0-4h-2V8h2v2zm4 4h-2v-2h2v2zm0-4h-2V8h2v2z"/></svg>
+          {runningInstances} {runningInstances === 1 ? 'INSTANZ' : 'INSTANZEN'}
+        </button>
         {activeCreds && (
           <div className="titlebar-profile" onClick={() => setDropdownOpen(!dropdownOpen)}>
             {activeSkinUrl ? (
@@ -222,6 +250,7 @@ function App() {
   const [resetTrigger, setResetTrigger] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeSkinUrl, setActiveSkinUrl] = useState<string | null>(null);
+  const [runningInstances, setRunningInstances] = useState(0);
 
   const fetchActiveSkinUrl = async (creds: Credentials) => {
     try {
@@ -261,6 +290,24 @@ function App() {
     }, 50);
     return () => clearTimeout(timer);
   }, []);
+
+  // Track running instances
+  useEffect(() => {
+    const unlistenStart = listen('instance-started', () => {
+      setRunningInstances(prev => prev + 1);
+    });
+    const unlistenStop = listen('instance-stopped', () => {
+      setRunningInstances(prev => Math.max(0, prev - 1));
+    });
+    return () => {
+      unlistenStart.then(f => f());
+      unlistenStop.then(f => f());
+    };
+  }, []);
+
+  const handleOpenLogs = () => {
+    invoke('open_log_window').catch(console.error);
+  };
 
   useEffect(() => {
     const creds = accounts.find(a => a.id === activeAccountId);
@@ -371,6 +418,8 @@ function App() {
           onLogout={handleLogout} 
           onLogin={handleLogin} 
           onSelectAccount={setActiveAccountId}
+          runningInstances={runningInstances}
+          onOpenLogs={handleOpenLogs}
         />
         <div className="login-container">
           <div className="login-card glass-panel animate-fade-in">
@@ -398,6 +447,8 @@ function App() {
         onLogout={handleLogout} 
         onLogin={handleLogin} 
         onSelectAccount={setActiveAccountId}
+        runningInstances={runningInstances}
+        onOpenLogs={handleOpenLogs}
       />
       <div className="app-layout animate-fade-in">
         <Sidebar activeView={activeView} onViewChange={handleViewChange} />

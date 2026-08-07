@@ -24,7 +24,6 @@ interface InstanceInfo {
 const btnStyle = {
   background: 'none',
   border: 'none',
-  color: '#8b949e',
   cursor: 'pointer',
   fontSize: '14px',
   display: 'flex',
@@ -132,8 +131,8 @@ export default function Logs() {
           const next = { ...prev };
           for (const [iId, newLogs] of Object.entries(currentBuffer)) {
             const combined = [...(next[iId] || []), ...newLogs];
-            // Keep last 5000 lines
-            next[iId] = combined.length > 5000 ? combined.slice(combined.length - 5000) : combined;
+            // Keep last 1000 lines to prevent CPU spikes in the client
+            next[iId] = combined.length > 1000 ? combined.slice(combined.length - 1000) : combined;
           }
           return next;
         });
@@ -323,10 +322,9 @@ export default function Logs() {
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
-      <div data-tauri-drag-region 
-        onPointerDown={(e) => {
-          getCurrentWindow().startDragging();
-        }}
+      <div 
+        data-tauri-drag-region
+        className="log-titlebar-drag"
         style={{
         height: '40px',
         background: '#0a0e14',
@@ -335,7 +333,7 @@ export default function Logs() {
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '0 15px',
-        borderBottom: '1px solid #1e2229'
+        borderBottom: '1px solid #1e2229',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1a70ff', fontWeight: 'bold', fontSize: '13px', pointerEvents: 'none', letterSpacing: '1px' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -348,7 +346,7 @@ export default function Logs() {
           <button style={btnStyle} onClick={() => invoke('maximize_window')} className="window-hover">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
           </button>
-          <button style={{ ...btnStyle, color: '#f44747' }} onClick={() => invoke('close_window')} className="window-hover-close">
+          <button style={{ ...btnStyle, color: '#f44747' }} onClick={() => invoke('hide_window')} className="window-hover-close">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
