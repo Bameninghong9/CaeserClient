@@ -4,7 +4,8 @@ import ProfileWizard from './ProfileWizard';
 import ModBrowser, { ModData } from './ModBrowser';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { Credentials } from './App';
+import { Credentials } from './store';
+import { useOutletContext, useLocation } from 'react-router-dom';
 
 export interface Profile {
   id: string;
@@ -15,7 +16,16 @@ export interface Profile {
   ram: number;
 }
 
-export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: Credentials | null, resetTrigger?: number }) {
+export interface DependencyInfo {
+  id: string;
+  platform: string;
+}
+
+export default function Profiles() {
+  const { activeCreds } = useOutletContext<{ activeCreds: Credentials | null }>();
+  const location = useLocation();
+  const resetTrigger = location.key;
+  
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,6 +120,72 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
     return launchProfile(activeProfile);
   };
 
+  const installDependency = async (dep: DependencyInfo, gameVersion: string, loader: string, profileName: string) => {
+    // Check if already installed
+    if (installedMods[dep.id]) return;
+    
+    let modData: ModData | null = null;
+    
+    if (dep.platform === 'modrinth') {
+      try {
+        const res = await fetch(`https://api.modrinth.com/v2/project/${dep.id}`);
+        const data = await res.json();
+        modData = {
+          id: data.id,
+          name: data.title,
+          author: "Unknown",
+          summary: data.description,
+          icon: data.icon_url || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + data.id,
+          platform: 'modrinth',
+          itemType: 'mod'
+        };
+      } catch (e) { console.error(e); }
+    } else if (dep.platform === 'curseforge') {
+      try {
+        const res = await fetch(`https://api.curse.tools/v1/cf/mods/${dep.id}`);
+        const data = (await res.json()).data;
+        modData = {
+          id: data.id.toString(),
+          name: data.name,
+          author: data.authors && data.authors.length > 0 ? data.authors[0].name : 'Unknown',
+          summary: data.summary,
+          icon: (data.logo && data.logo.thumbnailUrl) ? data.logo.thumbnailUrl : 'https://api.dicebear.com/7.x/identicon/svg?seed=' + data.id,
+          platform: 'curseforge',
+          itemType: 'mod'
+        };
+      } catch (e) { console.error(e); }
+    }
+
+    if (modData) {
+      setDownloadingMods(prev => ({ ...prev, [modData!.id]: true }));
+      try {
+        const deps = await invoke<DependencyInfo[]>('install_mod', {
+          modInfo: modData,
+          gameVersion,
+          loader,
+          profileName
+        });
+        
+        setInstalledMods(prev => ({ ...prev, [modData!.id]: modData! }));
+        loadProfileData();
+        
+        if (deps && deps.length > 0) {
+          for (const childDep of deps) {
+            await installDependency(childDep, gameVersion, loader, profileName);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to install dependency", e);
+      } finally {
+        setDownloadingMods(prev => {
+          const next = { ...prev };
+          delete next[modData!.id];
+          return next;
+        });
+      }
+    }
+  };
+
   const handleToggleInstall = async (mod: ModData) => {
     if (installedMods[mod.id]) {
       // Uninstall (for now just UI, backend logic can be added later)
@@ -126,7 +202,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
     setDownloadingMods(prev => ({ ...prev, [mod.id]: true }));
 
     try {
-      await invoke('install_mod', {
+      const deps = await invoke<DependencyInfo[]>('install_mod', {
         modInfo: mod,
         gameVersion: activeProfile.version,
         loader: activeProfile.loader,
@@ -135,6 +211,15 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
 
       // Update installed state on success
       setInstalledMods(prev => ({ ...prev, [mod.id]: mod }));
+      loadProfileData();
+      
+      if (deps && deps.length > 0) {
+        for (const dep of deps) {
+          if (!installedMods[dep.id]) {
+            await installDependency(dep, activeProfile.version, activeProfile.loader, activeProfile.name);
+          }
+        }
+      }
     } catch (e) {
       console.error("Failed to install mod:", e);
       alert("Fehler beim Herunterladen der Mod: " + e);
@@ -322,10 +407,10 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
                 
                 const filteredLocal = localMods.filter(lm => !installedModsList.find(im => lm.includes(im.name.replace(/ /g, '')) || lm.includes(im.id))).filter(lm => {
                   const [lmType, lmName] = lm.includes('::') ? lm.split('::') : ['mod', lm];
-                  const isCaeser = isCaeserMod(lmName, lmName);
                   const matchSearch = lmName.toLowerCase().includes(contentSearchQuery.toLowerCase());
-                  if (activeTab === 'caeserclient') return lmType === 'mod' && isCaeser && matchSearch;
-                  if (activeTab === 'mods') return lmType === 'mod' && !isCaeser && matchSearch;
+                  
+                  if (activeTab === 'caeserclient') return lmType === 'mod' && matchSearch;
+                  if (activeTab === 'mods') return false;
                   if (activeTab === 'resourcepacks') return lmType === 'resourcepack' && matchSearch;
                   if (activeTab === 'shaderpacks') return lmType === 'shader' && matchSearch;
                   return false;
@@ -338,7 +423,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
                 return (
                   <>
                     <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.1)', marginBottom: '16px' }}></div>
-                    <div className="content-grid">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 w-full">
                       {filteredInstalled.map(mod => {
                       let displayVersion = mod.version;
                       let isDisabled = false;
@@ -473,7 +558,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
             <h4 style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', letterSpacing: '1.5px', marginBottom: '8px', paddingLeft: '12px' }}>INHALTE</h4>
             
             {[
-              { id: 'mods', label: 'MODS', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>, count: installedModsList.filter(m => !m.name.toLowerCase().includes('caeserclient') && !m.id.toLowerCase().includes('caeserclient')).length + localMods.filter(lm => !installedModsList.find(im => lm.includes(im.name.replace(/ /g, '')) || lm.includes(im.id))).filter(lm => !lm.toLowerCase().includes('caeserclient')).length },
+              { id: 'mods', label: 'MODS', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>, count: installedModsList.filter(m => !m.name.toLowerCase().includes('caeserclient') && !m.id.toLowerCase().includes('caeserclient')).length },
               { id: 'resourcepacks', label: 'RESSOURCENPAKETE', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> },
               { id: 'shaderpacks', label: 'SHADER-PAKETE', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> },
               { id: 'caeserclient', label: 'CAESER CLIENT', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg> }
@@ -511,6 +596,8 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
             downloadingMods={downloadingMods}
             onToggleInstall={handleToggleInstall}
             itemType={modBrowserType}
+            gameVersion={activeProfile.version}
+            loader={activeProfile.loader}
           />
         )}
         
@@ -572,7 +659,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
 
   return (
     <div className="main-content">
-      <div className="profile-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', marginBottom: '20px' }}>
+      <div className="profile-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '10px' }}>
           <input
             type="text"
@@ -584,9 +671,9 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
           />
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase' }} onClick={() => setShowWizard(true)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px'}}><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            ERSTELLEN
+          <button className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase' }} onClick={() => setShowWizard(true)}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            Profile erstellen
           </button>
         </div>
       </div>

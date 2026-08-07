@@ -183,6 +183,13 @@ use tokio::io::AsyncWriteExt;
 struct ModrinthVersion {
     version_number: String,
     files: Vec<ModrinthFile>,
+    dependencies: Option<Vec<ModrinthDependency>>,
+}
+
+#[derive(serde::Deserialize)]
+struct ModrinthDependency {
+    project_id: Option<String>,
+    dependency_type: String,
 }
 
 #[derive(serde::Deserialize, Clone)]
@@ -203,6 +210,14 @@ struct CurseForgeFile {
     display_name: String,
     download_url: Option<String>,
     file_name: String,
+    dependencies: Option<Vec<CurseForgeDependency>>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CurseForgeDependency {
+    mod_id: u32,
+    relation_type: u32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -224,6 +239,12 @@ pub struct InstalledModsResponse {
     pub local_files: Vec<String>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct DependencyInfo {
+    pub id: String,
+    pub platform: String,
+}
+
 #[tauri::command]
 async fn install_mod(
     app: AppHandle,
@@ -231,14 +252,14 @@ async fn install_mod(
     game_version: String,
     loader: String,
     profile_name: String,
-) -> Result<(), String> {
+) -> Result<Vec<DependencyInfo>, String> {
     let mut mod_info = mod_info;
     let loader_lower = loader.to_lowercase();
     let mod_id = &mod_info.id;
     let platform = &mod_info.platform;
     
     // Resolve Download URL and Filename
-    let (download_url, filename) = if platform == "modrinth" {
+    let (download_url, filename, deps) = if platform == "modrinth" {
         let url = if mod_info.item_type.as_deref() == Some("mod") || mod_info.item_type.is_none() {
             format!(
                 "https://api.modrinth.com/v2/project/{}/version?loaders=[\"{}\"]&game_versions=[\"{}\"]",
@@ -262,7 +283,21 @@ async fn install_mod(
         let primary_file = version.files.iter().find(|f| f.primary).cloned();
         let file = primary_file.or_else(|| version.files.into_iter().next()).ok_or_else(|| "No file found in version".to_string())?;
         
-        (file.url, file.filename)
+        let mut deps = Vec::new();
+        if let Some(dependencies) = version.dependencies {
+            for dep in dependencies {
+                if dep.dependency_type == "required" {
+                    if let Some(pid) = dep.project_id {
+                        deps.push(DependencyInfo {
+                            id: pid,
+                            platform: "modrinth".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+        
+        (file.url, file.filename, deps)
     } else if platform == "curseforge" {
         let loader_id = if mod_info.item_type.as_deref() == Some("mod") || mod_info.item_type.is_none() {
             match loader_lower.as_str() {
@@ -290,7 +325,19 @@ async fn install_mod(
         
         let download_url = file.download_url.ok_or_else(|| "CurseForge file has no download URL".to_string())?;
         
-        (download_url, file.file_name)
+        let mut deps = Vec::new();
+        if let Some(dependencies) = file.dependencies {
+            for dep in dependencies {
+                if dep.relation_type == 3 {
+                    deps.push(DependencyInfo {
+                        id: dep.mod_id.to_string(),
+                        platform: "curseforge".to_string(),
+                    });
+                }
+            }
+        }
+        
+        (download_url, file.file_name, deps)
     } else {
         return Err("Unknown platform".to_string());
     };
@@ -365,7 +412,7 @@ async fn install_mod(
 
     println!("Successfully downloaded {} to {:?}", filename, file_path);
 
-    Ok(())
+    Ok(deps)
 }
 
 #[tauri::command]

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-
-import { Credentials } from './App';
+import { useOutletContext } from 'react-router-dom';
+import { ChevronDown, Play } from 'lucide-react';
+import { Credentials } from './store';
 import { Profile } from './Profiles';
+import { toast } from 'sonner';
 
-export default function Home({ activeCreds }: { activeCreds: Credentials | null }) {
+export default function Home() {
+  const { activeCreds } = useOutletContext<{ activeCreds: Credentials | null }>();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
   const [launching, setLaunching] = useState(false);
@@ -58,9 +61,10 @@ export default function Home({ activeCreds }: { activeCreds: Credentials | null 
       });
       setProgress(100);
       setTimeout(() => setProgress(0), 500);
+      toast.success('Spiel gestartet!');
     } catch (e) {
       console.error(e);
-      alert(`Failed to launch game: ${e}`);
+      toast.error(`Start fehlgeschlagen: ${e}`);
       setProgress(0);
     } finally {
       clearInterval(interval);
@@ -71,91 +75,51 @@ export default function Home({ activeCreds }: { activeCreds: Credentials | null 
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
 
   return (
-    <div className="main-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
-      <div style={{ flex: 1 }}></div>
+    <div className="flex-1 flex flex-col h-full relative p-8">
+      <div className="flex-1"></div>
       
-      <div className="play-section" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '50px', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
-        <div style={{ 
-          display: 'flex', 
-          width: '100%', 
-          height: '85px', 
-          background: 'var(--surface-color)', 
-          border: '1px solid var(--glass-border)', 
-          borderRadius: '12px', 
-          overflow: 'hidden', 
-          position: 'relative',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
-        }}>
+      <div className="relative flex flex-col items-center pb-12 w-full max-w-[500px] mx-auto">
+        <div className="flex w-full h-[85px] bg-surface border border-white/10 rounded-xl overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all">
           
           <button 
-            className="btn play-btn" 
+            className={`flex-1 relative flex flex-col justify-center items-center p-0 transition-all duration-300 ${
+              launching || !selectedProfile ? 'bg-slate-800 cursor-not-allowed' : 'bg-accent-gradient hover:bg-accent-gradient-hover cursor-pointer'
+            }`}
             onClick={handlePlay}
             disabled={launching || !selectedProfile}
-            style={{ 
-              flex: 1, 
-              position: 'relative', 
-              background: launching || !selectedProfile ? '#1e293b' : 'var(--accent-gradient)',
-              border: 'none',
-              borderRadius: '0',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: '0',
-              cursor: (launching || !selectedProfile) ? 'not-allowed' : 'pointer',
-              boxShadow: 'none',
-              transition: 'all 0.3s ease'
-            }}
           >
-            <div className="play-btn-progress" style={{ width: `${progress}%`, background: 'rgba(255,255,255,0.2)', position: 'absolute', left: 0, top: 0, height: '100%', transition: 'width 0.2s ease-out' }}></div>
-            <span style={{ position: 'relative', zIndex: 1, fontSize: '26px', fontWeight: '800', color: 'white', letterSpacing: '3px', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+            <div 
+              className="absolute left-0 top-0 h-full bg-white/20 transition-[width] duration-200 ease-out" 
+              style={{ width: `${progress}%` }}
+            />
+            <span className="relative z-10 text-[26px] font-extrabold text-white tracking-[3px] drop-shadow-md flex items-center gap-2">
+              {!launching && <Play fill="currentColor" size={24} className="mt-0.5" />}
               {launching ? 'LAUNCHING' : 'LAUNCH'}
             </span>
-            <span style={{ position: 'relative', zIndex: 1, fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '4px', fontWeight: '500' }}>
+            <span className="relative z-10 text-sm text-white/80 mt-1 font-medium">
               {selectedProfile ? selectedProfile.name : 'Kein Profil ausgewählt'}
             </span>
           </button>
           
-          <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', height: '100%', zIndex: 2 }}></div>
+          <div className="w-[1px] bg-white/10 h-full relative z-20"></div>
           
           <button 
             onClick={() => setDropdownOpen(!dropdownOpen)}
             disabled={launching}
-            style={{ 
-              width: '65px', 
-              background: launching ? '#1e293b' : 'var(--accent-gradient)',
-              border: 'none', 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center',
-              cursor: launching ? 'not-allowed' : 'pointer',
-              color: 'white',
-              transition: 'background 0.3s ease'
-            }}
+            className={`w-[65px] flex justify-center items-center text-white transition-all duration-300 ${
+              launching ? 'bg-slate-800 cursor-not-allowed' : 'bg-accent-gradient hover:bg-accent-gradient-hover cursor-pointer'
+            }`}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
+            <ChevronDown size={24} className={`transition-transform duration-300 ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
           
         </div>
         
-        <div style={{ position: 'relative', width: '100%' }}>
+        <div className="relative w-full">
           {dropdownOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '5px',
-              left: 0,
-              width: '100%',
-              background: '#0a1930',
-              border: '1px solid #2b5585',
-              borderRadius: '4px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
-              zIndex: 100
-            }}>
+            <div className="absolute top-2 left-0 w-full bg-[#0a1930] border border-[#2b5585] rounded-lg overflow-hidden shadow-[0_4px_15px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
               {profiles.length === 0 ? (
-                <div style={{ padding: '15px', color: '#a0aec0', fontSize: '0.9rem', textAlign: 'center' }}>Keine Profile erstellt</div>
+                <div className="p-4 text-slate-400 text-sm text-center">Keine Profile erstellt</div>
               ) : (
                 profiles.map(p => (
                   <div 
@@ -164,15 +128,12 @@ export default function Home({ activeCreds }: { activeCreds: Credentials | null 
                       setSelectedProfileId(p.id);
                       setDropdownOpen(false);
                     }}
-                    style={{
-                      padding: '12px 15px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #1a2c4e',
-                      background: selectedProfileId === p.id ? '#1a2c4e' : 'transparent',
-                    }}
+                    className={`p-3 cursor-pointer border-b border-[#1a2c4e] transition-colors hover:bg-[#1a2c4e]/50 ${
+                      selectedProfileId === p.id ? 'bg-[#1a2c4e]' : 'bg-transparent'
+                    }`}
                   >
-                    <div style={{ fontWeight: 'bold', color: 'white' }}>{p.name}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#a0aec0' }}>{p.loader} {p.version}</div>
+                    <div className="font-bold text-white">{p.name}</div>
+                    <div className="text-xs text-slate-400">{p.loader} {p.version}</div>
                   </div>
                 ))
               )}

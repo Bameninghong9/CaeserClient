@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { Credentials } from './App';
+import { Credentials, useAppStore } from './store';
+import { useOutletContext } from 'react-router-dom';
 import { SkinViewer, IdleAnimation } from 'skinview3d';
 
 export interface LocalSkin {
@@ -11,7 +12,27 @@ export interface LocalSkin {
   variant?: string;
 }
 
-export default function Skins({ activeCreds, onSkinChanged }: { activeCreds: Credentials | null, onSkinChanged?: () => void }) {
+export default function Skins() {
+  const { activeCreds } = useOutletContext<{ activeCreds: Credentials | null }>();
+  const setActiveSkinUrl = useAppStore(state => state.setActiveSkinUrl);
+  
+  const onSkinChanged = async () => {
+    if (!activeCreds) return;
+    try {
+      const data: any = await invoke('get_user_skin_data', { accessToken: activeCreds.access_token });
+      if (data.skins && data.skins.length > 0) {
+        const activeSkin = data.skins.find((s: any) => s.state === 'ACTIVE') || data.skins[0];
+        if (activeSkin && activeSkin.url) {
+          setActiveSkinUrl(activeSkin.url);
+          return;
+        }
+      }
+    } catch(e) {
+      console.error("Failed to fetch skin url", e);
+    }
+    setActiveSkinUrl(null);
+  };
+
   const [localSkins, setLocalSkins] = useState<LocalSkin[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeSkinInfo, setActiveSkinInfo] = useState<any>(null);
