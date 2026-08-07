@@ -84,6 +84,7 @@ function Titlebar({
   return (
     <div className="titlebar">
       <div className="titlebar-left">
+        <img src="/icon.png" alt="Icon" style={{ width: '18px', height: '18px', marginRight: '8px', borderRadius: '4px' }} />
         Caeser Client
       </div>
       <div className="titlebar-right">

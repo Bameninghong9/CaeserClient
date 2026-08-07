@@ -214,6 +214,8 @@ pub struct ModData {
     pub icon: String,
     pub platform: String,
     pub version: Option<String>,
+    #[serde(rename = "itemType")]
+    pub item_type: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -237,10 +239,18 @@ async fn install_mod(
     
     // Resolve Download URL and Filename
     let (download_url, filename) = if platform == "modrinth" {
-        let url = format!(
-            "https://api.modrinth.com/v2/project/{}/version?loaders=[\"{}\"]&game_versions=[\"{}\"]",
-            mod_id, loader_lower, game_version
-        );
+        let url = if mod_info.item_type.as_deref() == Some("mod") || mod_info.item_type.is_none() {
+            format!(
+                "https://api.modrinth.com/v2/project/{}/version?loaders=[\"{}\"]&game_versions=[\"{}\"]",
+                mod_id, loader_lower, game_version
+            )
+        } else {
+            format!(
+                "https://api.modrinth.com/v2/project/{}/version?game_versions=[\"{}\"]",
+                mod_id, game_version
+            )
+        };
+        
         let client = reqwest::Client::new();
         let res = client.get(&url).send().await.map_err(|e| e.to_string())?;
         let versions: Vec<ModrinthVersion> = res.json().await.map_err(|e| e.to_string())?;
@@ -254,12 +264,16 @@ async fn install_mod(
         
         (file.url, file.filename)
     } else if platform == "curseforge" {
-        let loader_id = match loader_lower.as_str() {
-            "forge" => 1,
-            "fabric" => 4,
-            "quilt" => 5,
-            "neoforge" => 6,
-            _ => 0,
+        let loader_id = if mod_info.item_type.as_deref() == Some("mod") || mod_info.item_type.is_none() {
+            match loader_lower.as_str() {
+                "forge" => 1,
+                "fabric" => 4,
+                "quilt" => 5,
+                "neoforge" => 6,
+                _ => 0,
+            }
+        } else {
+            0
         };
         
         let url = format!(
@@ -285,11 +299,18 @@ async fn install_mod(
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
     let app_dir = std::path::PathBuf::from(appdata).join("CaeserClient");
     let profile_dir = app_dir.join("profiles").join(&profile_name);
-    let mods_dir = profile_dir.join("mods");
-    tokio::fs::create_dir_all(&mods_dir).await.map_err(|e| e.to_string())?;
+    
+    let target_dir_name = match mod_info.item_type.as_deref() {
+        Some("resourcepack") => "resourcepacks",
+        Some("shader") => "shaderpacks",
+        _ => "mods",
+    };
+    
+    let target_dir = profile_dir.join(target_dir_name);
+    tokio::fs::create_dir_all(&target_dir).await.map_err(|e| e.to_string())?;
 
     // Download the file
-    let file_path = mods_dir.join(&filename);
+    let file_path = target_dir.join(&filename);
     let mut response = reqwest::get(&download_url).await.map_err(|e| e.to_string())?;
     let mut file = tokio::fs::File::create(&file_path).await.map_err(|e| e.to_string())?;
     
@@ -337,14 +358,26 @@ async fn get_installed_mods(profile_name: String) -> Result<InstalledModsRespons
     }
 
     let mut local_files = Vec::new();
-    if mods_dir.exists() {
-        if let Ok(mut entries) = tokio::fs::read_dir(mods_dir).await {
-            while let Ok(Some(entry)) = entries.next_entry().await {
-                if let Ok(file_type) = entry.file_type().await {
-                    if file_type.is_file() {
-                        let file_name = entry.file_name().to_string_lossy().to_string();
-                        if file_name.ends_with(".jar") || file_name.ends_with(".jar.disabled") {
-                            local_files.push(file_name);
+    
+    let dirs_to_scan = [("mods", "mod"), ("resourcepacks", "resourcepack"), ("shaderpacks", "shader")];
+    
+    for (dir_name, item_type) in dirs_to_scan {
+        let scan_dir = profile_dir.join(dir_name);
+        if scan_dir.exists() {
+            if let Ok(mut entries) = tokio::fs::read_dir(scan_dir).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    if let Ok(file_type) = entry.file_type().await {
+                        if file_type.is_file() {
+                            let file_name = entry.file_name().to_string_lossy().to_string();
+                            if file_name.ends_with(".jar") || file_name.ends_with(".jar.disabled") || file_name.ends_with(".zip") || file_name.ends_with(".zip.disabled") {
+                                // To let the frontend know the item type, we prefix local file names with "type:" internally, 
+                                // or we can just send it as an object. But since it expects Vec<String>, we can format it.
+                                // Wait, changing the return type to a struct is better. 
+                                // Actually, let's keep it simple: just return the filename, 
+                                // wait, if we have duplicate filenames in mods and resourcepacks?
+                                // Let's format as `item_type::filename` for local_files.
+                                local_files.push(format!("{}::{}", item_type, file_name));
+                            }
                         }
                     }
                 }
@@ -396,15 +429,22 @@ pub fn run() {
 }
 
 #[tauri::command]
-async fn toggle_mod_file(profile_name: String, file_name: String, disable: bool) -> Result<(), String> {
+async fn toggle_mod_file(profile_name: String, file_name: String, disable: bool, item_type: Option<String>) -> Result<(), String> {
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-    let mods_dir = std::path::PathBuf::from(appdata)
+    
+    let target_dir_name = match item_type.as_deref() {
+        Some("resourcepack") => "resourcepacks",
+        Some("shader") => "shaderpacks",
+        _ => "mods",
+    };
+    
+    let target_dir = std::path::PathBuf::from(appdata)
         .join("CaeserClient")
         .join("profiles")
         .join(&profile_name)
-        .join("mods");
+        .join(target_dir_name);
 
-    let old_path = mods_dir.join(&file_name);
+    let old_path = target_dir.join(&file_name);
     if !old_path.exists() {
         return Err("File not found".to_string());
     }
@@ -417,21 +457,27 @@ async fn toggle_mod_file(profile_name: String, file_name: String, disable: bool)
         file_name.trim_end_matches(".disabled").to_string()
     };
 
-    let new_path = mods_dir.join(new_name);
+    let new_path = target_dir.join(new_name);
     tokio::fs::rename(old_path, new_path).await.map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-async fn delete_mod_file(profile_name: String, file_name: String, mod_id: Option<String>) -> Result<(), String> {
+async fn delete_mod_file(profile_name: String, file_name: String, mod_id: Option<String>, item_type: Option<String>) -> Result<(), String> {
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
     let profile_dir = std::path::PathBuf::from(appdata)
         .join("CaeserClient")
         .join("profiles")
         .join(&profile_name);
-    let mods_dir = profile_dir.join("mods");
+        
+    let target_dir_name = match item_type.as_deref() {
+        Some("resourcepack") => "resourcepacks",
+        Some("shader") => "shaderpacks",
+        _ => "mods",
+    };
+    let target_dir = profile_dir.join(target_dir_name);
 
-    let file_path = mods_dir.join(&file_name);
+    let file_path = target_dir.join(&file_name);
     if file_path.exists() {
         tokio::fs::remove_file(file_path).await.map_err(|e| e.to_string())?;
     }

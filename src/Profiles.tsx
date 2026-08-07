@@ -27,13 +27,17 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
 
   const [deleteProfileId, setDeleteProfileId] = useState<string | null>(null);
 
-  const [showModBrowser, setShowModBrowser] = useState(false);
+  const [modBrowserType, setModBrowserType] = useState<'mod' | 'resourcepack' | 'shader' | null>(null);
   const [cachedVersions, setCachedVersions] = useState<string[]>([]);
+  
+  // New States for Profile Content View
+  const [activeTab, setActiveTab] = useState<'mods' | 'resourcepacks' | 'shaderpacks' | 'caeserclient'>('mods');
+  const [contentSearchQuery, setContentSearchQuery] = useState('');
 
   useEffect(() => {
     if (resetTrigger !== undefined) {
       setActiveProfile(null);
-      setShowModBrowser(false);
+      setModBrowserType(null);
     }
   }, [resetTrigger]);
 
@@ -131,7 +135,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
   };
 
   const [localMods, setLocalMods] = useState<string[]>([]);
-  const [modToDelete, setModToDelete] = useState<{ fileName: string, modId?: string } | null>(null);
+  const [modToDelete, setModToDelete] = useState<{ fileName: string, modId?: string, itemType?: string } | null>(null);
 
   const loadProfileData = async () => {
     if (activeProfile) {
@@ -161,23 +165,25 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
     loadProfileData();
   }, [activeProfile]);
 
-  const toggleMod = async (fileName: string, disable: boolean) => {
+  const toggleMod = async (localFileId: string, disable: boolean) => {
     try {
-      await invoke('toggle_mod_file', { profileName: activeProfile?.name || '', fileName, disable });
+      const [itemType, fileName] = localFileId.includes('::') ? localFileId.split('::') : ['mod', localFileId];
+      await invoke('toggle_mod_file', { profileName: activeProfile?.name || '', fileName, disable, itemType });
       loadProfileData();
     } catch (e) {
       console.error('Failed to toggle mod', e);
     }
   };
 
-  const deleteMod = (fileName: string, modId?: string) => {
-    setModToDelete({ fileName, modId });
+  const deleteMod = (localFileId: string, modId?: string) => {
+    const [itemType, fileName] = localFileId.includes('::') ? localFileId.split('::') : ['mod', localFileId];
+    setModToDelete({ fileName, modId, itemType });
   };
 
   const confirmDeleteMod = async () => {
     if (!modToDelete) return;
     try {
-      await invoke('delete_mod_file', { profileName: activeProfile?.name || '', fileName: modToDelete.fileName, modId: modToDelete.modId });
+      await invoke('delete_mod_file', { profileName: activeProfile?.name || '', fileName: modToDelete.fileName, modId: modToDelete.modId, itemType: modToDelete.itemType });
       loadProfileData();
     } catch (e) {
       console.error('Failed to delete mod', e);
@@ -190,173 +196,305 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
 
 
 
-  if (activeProfile) {
+    if (activeProfile) {
     return (
-      <div className="main-content" style={{ position: 'relative' }}>
-        <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={() => setActiveProfile(null)}>
-          &larr; Zurück
-        </button>
-        <div className="profile-header" style={{ alignItems: 'flex-start' }}>
-          <div>
-            <h2 className="profile-name-large">{activeProfile.name}</h2>
-            <div className="profile-badges" style={{ marginTop: '10px' }}>
-              <span className="badge">{activeProfile.version}</span>
-              <span className="badge">{activeProfile.loader}</span>
-              <span className="badge">{activeProfile.ram > 128 ? (activeProfile.ram / 1024).toFixed(1).replace('.0', '') : activeProfile.ram} GB RAM</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-            <button 
-                className={`btn ${isLaunching ? 'launching' : ''}`}
-                onClick={handlePlay}
-                disabled={isLaunching}
-            >
-                {isLaunching ? 'Starte...' : 'Spielen'}
-            </button>
-            <button className="btn" onClick={() => setShowModBrowser(true)}>
-              Mod hinzufügen
-            </button>
-          </div>
-        </div>
+      <div className="main-content" style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
         
-        <div style={{ padding: '0 20px', marginTop: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ marginBottom: '16px' }}>Installierte Mods</h3>
-          {installedModsList.length === 0 && localMods.length === 0 ? (
-            <p style={{ color: 'rgba(255,255,255,0.7)' }}>Du hast noch keine Mods installiert.</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-              {installedModsList.map(mod => {
-                let displayVersion = mod.version;
-                let isDisabled = false;
-                if (!displayVersion) {
-                  const normalizedName = mod.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const localFile = localMods.find(lm => {
-                    const lmNorm = lm.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    return lmNorm.includes(normalizedName) || lm.includes(mod.id);
-                  });
-                  if (localFile) {
-                    isDisabled = localFile.endsWith('.disabled');
-                    const cleanName = localFile.replace(/\.jar(\.disabled)?$/, '');
-                    const parts = cleanName.split('-');
-                    if (parts.length > 1) {
-                      displayVersion = parts.slice(1).join('-');
-                    } else {
-                      displayVersion = cleanName;
-                    }
-                  }
-                } else {
-                  const normalizedName = mod.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const localFile = localMods.find(lm => {
-                    const lmNorm = lm.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    return lmNorm.includes(normalizedName) || lm.includes(mod.id);
-                  });
-                  if (localFile) {
-                    isDisabled = localFile.endsWith('.disabled');
-                  }
-                }
-                
-                const matchedFile = localMods.find(lm => {
-                    const lmNorm = lm.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    return lmNorm.includes(mod.name.toLowerCase().replace(/[^a-z0-9]/g, '')) || lm.includes(mod.id);
-                });
-                
-                return (
-                <div key={mod.id} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  padding: '12px 16px', 
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  borderRadius: '12px',
-                  background: 'rgba(10, 10, 15, 0.4)',
-                  opacity: isDisabled ? 0.5 : 1,
-                  filter: isDisabled ? 'grayscale(100%)' : 'none'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    {mod.icon ? (
-                      <img src={mod.icon} alt={mod.name} style={{ width: '44px', height: '44px', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }} />
-                    ) : (
-                      <div style={{ width: '44px', height: '44px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0', fontWeight: 'bold', fontSize: '10px', textAlign: 'center', lineHeight: '1.2' }}>
-                        MOD
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ fontFamily: 'monospace', fontSize: '15px', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>{mod.name}</div>
-                      <div style={{ fontSize: '12px', color: '#a0aec0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {displayVersion || 'Unbekannt'}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div 
-                      onClick={() => { if(matchedFile) deleteMod(matchedFile, mod.id) }} 
-                      style={{ cursor: 'pointer', color: '#f56565', padding: '4px', display: 'flex' }}
-                      title="Mod löschen"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    </div>
-                    <div 
-                      onClick={() => { if(matchedFile) toggleMod(matchedFile, !isDisabled) }}
-                      style={{ cursor: 'pointer', width: '36px', height: '18px', background: isDisabled ? 'rgba(255,255,255,0.1)' : '#3182ce', display: 'flex', alignItems: 'center', justifyContent: isDisabled ? 'flex-start' : 'flex-end', padding: '2px', border: '1px solid rgba(255,255,255,0.1)', boxSizing: 'border-box' }}
-                    >
-                      <div style={{ width: '12px', height: '12px', background: isDisabled ? 'rgba(255,255,255,0.4)' : 'white' }}></div>
-                    </div>
-                  </div>
-                </div>
-              )})}
-              {localMods.filter(lm => !installedModsList.find(im => lm.includes(im.name.replace(/ /g, '')) || lm.includes(im.id))).map((fileName, idx) => {
-                const isDisabled = fileName.endsWith('.disabled');
-                const cleanFileName = fileName.replace(/\.disabled$/, '');
-                return (
-                <div key={`local-${idx}`} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  padding: '12px 16px', 
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  borderRadius: '12px',
-                  background: 'rgba(10, 10, 15, 0.4)',
-                  opacity: isDisabled ? 0.5 : 1,
-                  filter: isDisabled ? 'grayscale(100%)' : 'none'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ width: '44px', height: '44px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0', fontWeight: 'bold', fontSize: '10px', textAlign: 'center', lineHeight: '1.2' }}>
-                      LOKAL<br/>MOD
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ fontFamily: 'monospace', fontSize: '15px', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>{cleanFileName}</div>
-                      <div style={{ fontSize: '12px', color: '#a0aec0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        Lokale Datei
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div 
-                      onClick={() => deleteMod(fileName)} 
-                      style={{ cursor: 'pointer', color: '#f56565', padding: '4px', display: 'flex' }}
-                      title="Mod löschen"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    </div>
-                    <div 
-                      onClick={() => toggleMod(fileName, !isDisabled)}
-                      style={{ cursor: 'pointer', width: '36px', height: '18px', background: isDisabled ? 'rgba(255,255,255,0.1)' : '#3182ce', display: 'flex', alignItems: 'center', justifyContent: isDisabled ? 'flex-start' : 'flex-end', padding: '2px', border: '1px solid rgba(255,255,255,0.1)', boxSizing: 'border-box' }}
-                    >
-                      <div style={{ width: '12px', height: '12px', background: isDisabled ? 'rgba(255,255,255,0.4)' : 'white' }}></div>
-                    </div>
-                  </div>
-                </div>
-              )})}
-            </div>
-          )}
+        {/* Top bar with Zurück */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px', color: '#a0aec0', fontSize: '12px', letterSpacing: '1px', fontWeight: 'bold' }}>
+          <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s' }} onClick={() => setActiveProfile(null)} onMouseOver={e => e.currentTarget.style.color = 'white'} onMouseOut={e => e.currentTarget.style.color = '#a0aec0'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            ZURÜCK <span style={{ opacity: 0.3, margin: '0 4px' }}>|</span> {activeProfile.name}
+          </div>
         </div>
 
-        {showModBrowser && (
+        {/* Header: Title + Play Button */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ width: '72px', height: '72px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)' }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg> 
+            </div>
+            <div>
+              <h2 style={{ fontSize: '32px', margin: 0, fontWeight: 700, letterSpacing: '0.5px' }}>{activeProfile.name}</h2>
+              <div style={{ display: 'flex', gap: '20px', fontSize: '12px', color: '#a0aec0', marginTop: '10px', fontWeight: 600 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {activeProfile.version}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg> {activeProfile.loader}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg> {(activeProfile.ram / 1024).toFixed(1).replace('.0', '')} GB RAM</span>
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button className={`btn ${isLaunching ? 'launching' : ''}`} onClick={handlePlay} disabled={isLaunching} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 28px', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '4px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              {isLaunching ? 'STARTE...' : 'SPIELEN'}
+            </button>
+            <button style={{ width: '46px', height: '46px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Split Layout Content */}
+        <div style={{ display: 'flex', flex: 1, marginTop: '10px', overflow: 'hidden' }}>
+          
+          {/* Main Content Area (Left side) */}
+          <div style={{ flex: 1, paddingRight: '32px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            
+            {/* Search Bar + Add Mod Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }}></div>
+                <input
+                  type="text"
+                  placeholder="mods durchsuchen..."
+                  value={contentSearchQuery}
+                  onChange={e => setContentSearchQuery(e.target.value)}
+                  style={{ 
+                    padding: '8px 0', 
+                    fontSize: '13px', 
+                    border: 'none', 
+                    background: 'transparent', 
+                    color: 'white', 
+                    width: '300px',
+                    outline: 'none',
+                    letterSpacing: '0.5px'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                {activeTab === 'mods' && (
+                  <div 
+                    onClick={() => setModBrowserType('mod')}
+                    style={{ cursor: 'pointer', color: 'var(--accent-color)', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    MODS HINZUFÜGEN
+                  </div>
+                )}
+                {activeTab === 'resourcepacks' && (
+                  <div 
+                    onClick={() => setModBrowserType('resourcepack')}
+                    style={{ cursor: 'pointer', color: 'var(--accent-color)', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    RESSOURCENPAKETE HINZUFÜGEN
+                  </div>
+                )}
+                {activeTab === 'shaderpacks' && (
+                  <div 
+                    onClick={() => setModBrowserType('shader')}
+                    style={{ cursor: 'pointer', color: 'var(--accent-color)', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    SHADER-PAKETE HINZUFÜGEN
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Grid Content */}
+            {(() => {
+                const isCaeserMod = (name: string, id: string) => name.toLowerCase().includes('caeserclient') || id.toLowerCase().includes('caeserclient');
+                const filteredInstalled = installedModsList.filter(mod => {
+                  const isCaeser = isCaeserMod(mod.name, mod.id);
+                  const matchSearch = mod.name.toLowerCase().includes(contentSearchQuery.toLowerCase());
+                  const modItemType = mod.itemType || 'mod';
+                  if (activeTab === 'caeserclient') return modItemType === 'mod' && isCaeser && matchSearch;
+                  if (activeTab === 'mods') return modItemType === 'mod' && !isCaeser && matchSearch;
+                  if (activeTab === 'resourcepacks') return modItemType === 'resourcepack' && matchSearch;
+                  if (activeTab === 'shaderpacks') return modItemType === 'shader' && matchSearch;
+                  return false;
+                });
+                
+                const filteredLocal = localMods.filter(lm => !installedModsList.find(im => lm.includes(im.name.replace(/ /g, '')) || lm.includes(im.id))).filter(lm => {
+                  const [lmType, lmName] = lm.includes('::') ? lm.split('::') : ['mod', lm];
+                  const isCaeser = isCaeserMod(lmName, lmName);
+                  const matchSearch = lmName.toLowerCase().includes(contentSearchQuery.toLowerCase());
+                  if (activeTab === 'caeserclient') return lmType === 'mod' && isCaeser && matchSearch;
+                  if (activeTab === 'mods') return lmType === 'mod' && !isCaeser && matchSearch;
+                  if (activeTab === 'resourcepacks') return lmType === 'resourcepack' && matchSearch;
+                  if (activeTab === 'shaderpacks') return lmType === 'shader' && matchSearch;
+                  return false;
+                });
+                
+                if (filteredInstalled.length === 0 && filteredLocal.length === 0) {
+                   return <p style={{ color: 'rgba(255,255,255,0.5)', padding: '20px 0' }}>Keine Einträge gefunden.</p>;
+                }
+                
+                return (
+                  <div className="content-grid">
+                    {filteredInstalled.map(mod => {
+                      let displayVersion = mod.version;
+                      let isDisabled = false;
+                      if (!displayVersion) {
+                        const normalizedName = mod.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const localFile = localMods.find(lm => {
+                          const lmNorm = lm.toLowerCase().replace(/[^a-z0-9]/g, '');
+                          return lmNorm.includes(normalizedName) || lm.includes(mod.id);
+                        });
+                        if (localFile) {
+                          isDisabled = localFile.endsWith('.disabled');
+                          const cleanName = localFile.replace(/\.jar(\.disabled)?$/, '');
+                          const parts = cleanName.split('-');
+                          if (parts.length > 1) {
+                            displayVersion = parts.slice(1).join('-');
+                          } else {
+                            displayVersion = cleanName;
+                          }
+                        }
+                      } else {
+                        const normalizedName = mod.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const localFile = localMods.find(lm => {
+                          const lmNorm = lm.toLowerCase().replace(/[^a-z0-9]/g, '');
+                          return lmNorm.includes(normalizedName) || lm.includes(mod.id);
+                        });
+                        if (localFile) {
+                          isDisabled = localFile.endsWith('.disabled');
+                        }
+                      }
+                      
+                      const matchedFile = localMods.find(lm => {
+                          const lmNorm = lm.toLowerCase().replace(/[^a-z0-9]/g, '');
+                          return lmNorm.includes(mod.name.toLowerCase().replace(/[^a-z0-9]/g, '')) || lm.includes(mod.id);
+                      });
+                      
+                      return (
+                      <div key={mod.id} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        padding: '12px 16px', 
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        background: 'rgba(10, 10, 15, 0.4)',
+                        opacity: isDisabled ? 0.5 : 1,
+                        filter: isDisabled ? 'grayscale(100%)' : 'none'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                          {mod.icon ? (
+                            <img src={mod.icon} alt={mod.name} style={{ width: '44px', height: '44px', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }} />
+                          ) : (
+                            <div style={{ width: '44px', height: '44px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0', fontWeight: 'bold', fontSize: '10px', textAlign: 'center', lineHeight: '1.2' }}>
+                              MOD
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 'bold', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>{mod.name}</div>
+                            <div style={{ fontSize: '11px', color: '#a0aec0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {displayVersion || 'Unbekannt'}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div 
+                            onClick={() => { if(matchedFile) deleteMod(matchedFile, mod.id) }} 
+                            style={{ cursor: 'pointer', color: '#f56565', padding: '4px', display: 'flex' }}
+                            title="Löschen"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                          </div>
+                          <div 
+                            onClick={() => { if(matchedFile) toggleMod(matchedFile, !isDisabled) }}
+                            style={{ cursor: 'pointer', width: '32px', height: '16px', background: isDisabled ? 'rgba(255,255,255,0.1)' : 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: isDisabled ? 'flex-start' : 'flex-end', padding: '2px', border: '1px solid rgba(255,255,255,0.1)', boxSizing: 'border-box', borderRadius: '8px' }}
+                          >
+                            <div style={{ width: '10px', height: '10px', background: isDisabled ? 'rgba(255,255,255,0.4)' : 'white', borderRadius: '50%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    )})}
+                    {filteredLocal.map((fileName, idx) => {
+                      const isDisabled = fileName.endsWith('.disabled');
+                      const cleanFileName = fileName.replace(/\.disabled$/, '');
+                      return (
+                      <div key={`local-${idx}`} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        padding: '12px 16px', 
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        background: 'rgba(10, 10, 15, 0.4)',
+                        opacity: isDisabled ? 0.5 : 1,
+                        filter: isDisabled ? 'grayscale(100%)' : 'none'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                          <div style={{ width: '44px', height: '44px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0', fontWeight: 'bold', fontSize: '10px', textAlign: 'center', lineHeight: '1.2' }}>
+                            LOKAL<br/>MOD
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 'bold', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>{cleanFileName}</div>
+                            <div style={{ fontSize: '11px', color: '#a0aec0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              Lokale Datei
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div 
+                            onClick={() => deleteMod(fileName)} 
+                            style={{ cursor: 'pointer', color: '#f56565', padding: '4px', display: 'flex' }}
+                            title="Löschen"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                          </div>
+                          <div 
+                            onClick={() => toggleMod(fileName, !isDisabled)}
+                            style={{ cursor: 'pointer', width: '32px', height: '16px', background: isDisabled ? 'rgba(255,255,255,0.1)' : 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: isDisabled ? 'flex-start' : 'flex-end', padding: '2px', border: '1px solid rgba(255,255,255,0.1)', boxSizing: 'border-box', borderRadius: '8px' }}
+                          >
+                            <div style={{ width: '10px', height: '10px', background: isDisabled ? 'rgba(255,255,255,0.4)' : 'white', borderRadius: '50%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    )})}
+                  </div>
+                );
+              })()
+            }
+          </div>
+          
+          {/* Sidebar INHALTE (Right side) */}
+          <div style={{ width: '220px', borderLeft: '1px solid rgba(255,255,255,0.05)', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <h4 style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', letterSpacing: '1.5px', marginBottom: '8px', paddingLeft: '12px' }}>INHALTE</h4>
+            
+            {[
+              { id: 'mods', label: 'MODS', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>, count: installedModsList.filter(m => !m.name.toLowerCase().includes('caeserclient') && !m.id.toLowerCase().includes('caeserclient')).length + localMods.filter(lm => !installedModsList.find(im => lm.includes(im.name.replace(/ /g, '')) || lm.includes(im.id))).filter(lm => !lm.toLowerCase().includes('caeserclient')).length },
+              { id: 'resourcepacks', label: 'RESSOURCENPAKETE', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> },
+              { id: 'shaderpacks', label: 'SHADER-PAKETE', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> },
+              { id: 'caeserclient', label: 'CAESER CLIENT', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg> }
+            ].map(tab => (
+              <div 
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 12px', cursor: 'pointer', borderRadius: '8px',
+                  background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: activeTab === tab.id ? 'white' : 'rgba(255,255,255,0.6)',
+                  fontWeight: activeTab === tab.id ? 'bold' : 'normal',
+                  transition: 'all 0.2s',
+                  fontSize: '13px',
+                  letterSpacing: '0.5px'
+                }}
+                onMouseOver={(e) => { if(activeTab !== tab.id) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'white'; } }}
+                onMouseOut={(e) => { if(activeTab !== tab.id) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; } }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {tab.icon}
+                  {tab.label}
+                </div>
+                {tab.count !== undefined && <span style={{ fontSize: '12px', opacity: 0.7 }}>{tab.count}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {modBrowserType !== null && (
           <ModBrowser 
-            onClose={() => setShowModBrowser(false)} 
+            onClose={() => setModBrowserType(null)} 
             installedMods={installedMods}
             downloadingMods={downloadingMods}
             onToggleInstall={handleToggleInstall}
+            itemType={modBrowserType}
           />
         )}
         
@@ -510,7 +648,7 @@ export default function Profiles({ activeCreds, resetTrigger }: { activeCreds: C
                 onClick={(e) => {
                   e.stopPropagation();
                   setActiveProfile(p);
-                  setShowModBrowser(true);
+                  setModBrowserType('mod');
                 }}
                 style={{ flex: 1, justifyContent: 'center', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}
                 onMouseOver={(e) => {

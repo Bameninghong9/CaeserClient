@@ -71,13 +71,21 @@ export default function Home({ activeCreds }: { activeCreds: Credentials | null 
   const selectedProfile = profiles.find(p => p.id === selectedProfileId);
 
   return (
-    <div className="main-content">
-      <h1 className="hero-title">Caeser Client</h1>
-      
+    <div className="main-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       <div style={{ flex: 1 }}></div>
       
-      <div className="play-section" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '40px', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', width: '100%', height: '80px', background: '#0a1930', border: '2px solid #2b5585', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
+      <div className="play-section" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '50px', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+        <div style={{ 
+          display: 'flex', 
+          width: '100%', 
+          height: '85px', 
+          background: 'var(--surface-color)', 
+          border: '1px solid var(--glass-border)', 
+          borderRadius: '12px', 
+          overflow: 'hidden', 
+          position: 'relative',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+        }}>
           
           <button 
             className="btn play-btn" 
@@ -86,42 +94,46 @@ export default function Home({ activeCreds }: { activeCreds: Credentials | null 
             style={{ 
               flex: 1, 
               position: 'relative', 
-              background: 'transparent',
+              background: launching || !selectedProfile ? '#1e293b' : 'var(--accent-gradient)',
               border: 'none',
+              borderRadius: '0',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
               padding: '0',
-              cursor: (launching || !selectedProfile) ? 'not-allowed' : 'pointer'
+              cursor: (launching || !selectedProfile) ? 'not-allowed' : 'pointer',
+              boxShadow: 'none',
+              transition: 'all 0.3s ease'
             }}
           >
-            <div className="play-btn-progress" style={{ width: `${progress}%`, background: 'rgba(255,255,255,0.1)', position: 'absolute', left: 0, top: 0, height: '100%', transition: 'width 0.2s' }}></div>
-            <span style={{ position: 'relative', zIndex: 1, fontSize: '24px', fontWeight: 'bold', color: 'white', letterSpacing: '2px' }}>
+            <div className="play-btn-progress" style={{ width: `${progress}%`, background: 'rgba(255,255,255,0.2)', position: 'absolute', left: 0, top: 0, height: '100%', transition: 'width 0.2s ease-out' }}></div>
+            <span style={{ position: 'relative', zIndex: 1, fontSize: '26px', fontWeight: '800', color: 'white', letterSpacing: '3px', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
               {launching ? 'LAUNCHING' : 'LAUNCH'}
             </span>
-            <span style={{ position: 'relative', zIndex: 1, fontSize: '14px', color: '#e2e8f0', marginTop: '2px' }}>
+            <span style={{ position: 'relative', zIndex: 1, fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '4px', fontWeight: '500' }}>
               {selectedProfile ? selectedProfile.name : 'Kein Profil ausgewählt'}
             </span>
           </button>
           
-          <div style={{ width: '2px', background: '#2b5585', height: '100%' }}></div>
+          <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', height: '100%', zIndex: 2 }}></div>
           
           <button 
             onClick={() => setDropdownOpen(!dropdownOpen)}
             disabled={launching}
             style={{ 
-              width: '60px', 
-              background: 'transparent', 
+              width: '65px', 
+              background: launching ? '#1e293b' : 'var(--accent-gradient)',
               border: 'none', 
               display: 'flex', 
               justifyContent: 'center', 
               alignItems: 'center',
               cursor: launching ? 'not-allowed' : 'pointer',
-              color: 'white'
+              color: 'white',
+              transition: 'background 0.3s ease'
             }}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>
               <path d="M7 10l5 5 5-5z"/>
             </svg>
           </button>

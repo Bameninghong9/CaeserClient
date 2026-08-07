@@ -1,17 +1,19 @@
 :root {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   color: #ffffff;
-  background-color: #050a16;
+  background-color: #030712;
   
-  --glass-bg: #0b132b;
-  --glass-border: rgba(65, 105, 225, 0.3);
+  --glass-bg: rgba(10, 15, 29, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
   --accent-color: #3b82f6;
   --accent-hover: #60a5fa;
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
   --danger-color: #ef4444;
   --danger-hover: #f87171;
-  --surface-color: #080f22;
-  --bg-color: #050a16;
-  --modal-bg: #0d1730;
+  --surface-color: #0a0f1d;
+  --bg-color: #030712;
+  --modal-bg: #0f172a;
 }
 
 ::selection {
@@ -20,7 +22,7 @@
 }
 
 html {
-  background-color: #050a16;
+  background-color: var(--bg-color);
 }
 
 body {
@@ -30,9 +32,12 @@ body {
   min-height: 100vh;
   overflow: hidden;
   background: var(--bg-color);
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(37, 99, 235, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.04) 0%, transparent 50%);
   user-select: none;
   border-radius: 0px;
-  border: 1px solid rgba(65, 105, 225, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   transition: border-radius 0.2s;
 }
 
@@ -44,37 +49,44 @@ body.maximized {
 /* Glassmorphism Container */
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .btn {
-  background: var(--accent-color);
+  background: var(--accent-gradient);
   color: white;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 12px 24px;
-  border-radius: 4px;
-  font-size: 16px;
+  border-radius: 8px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+  letter-spacing: 0.5px;
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--accent-gradient-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
 }
 
 .btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
 }
 
 .btn:disabled {
-  opacity: 0.7;
+  background: #1e293b;
+  color: #64748b;
+  border: 1px solid #334155;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
@@ -303,34 +315,40 @@ body.maximized {
 
 /* Sidebar */
 .sidebar {
-  width: 250px;
-  background: rgba(15, 23, 42, 0.7);
+  width: 180px;
+  background: rgba(15, 23, 42, 0.4);
   border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
-  padding: 16px 0;
+  padding: 24px 0;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .nav-item {
-  padding: 12px 24px;
+  padding: 12px 20px;
   display: flex;
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  transition: background 0.2s;
-  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
+  margin: 4px 12px;
+  border-radius: 8px;
+  font-size: 14px;
 }
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.05);
   color: white;
+  transform: translateX(2px);
 }
 
 .nav-item.active {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--accent-color);
-  border-right: 3px solid var(--accent-color);
+  background: var(--accent-color);
+  color: white;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
 }
 
 /* Main Content Area */
@@ -966,6 +984,18 @@ body.maximized {
 
 .log-titlebar-drag {
   -webkit-app-region: drag;
+}
+
+/* Profile Content Grid */
+.content-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+}
+
+body.maximized .content-grid {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .log-titlebar-drag button,

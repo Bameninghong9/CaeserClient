@@ -8,6 +8,7 @@ export interface ModData {
   icon: string;
   platform: 'modrinth' | 'curseforge';
   version?: string;
+  itemType?: string;
 }
 
 export const MOCK_MODS_CURSEFORGE: ModData[] = [
@@ -20,12 +21,14 @@ export default function ModBrowser({
   onClose, 
   installedMods, 
   downloadingMods,
-  onToggleInstall 
+  onToggleInstall,
+  itemType = 'mod'
 }: { 
   onClose: () => void, 
   installedMods: Record<string, ModData>,
   downloadingMods: Record<string, boolean>,
-  onToggleInstall: (mod: ModData) => void 
+  onToggleInstall: (mod: ModData) => void,
+  itemType?: 'mod' | 'resourcepack' | 'shader'
 }) {
   const [platform, setPlatform] = useState<'modrinth' | 'curseforge'>('modrinth');
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,7 +42,7 @@ export default function ModBrowser({
       try {
         if (platform === 'modrinth') {
           const query = searchQuery ? `&query=${encodeURIComponent(searchQuery)}` : '';
-          const res = await fetch(`https://api.modrinth.com/v2/search?limit=15&facets=[["project_type:mod"]]${query}`);
+          const res = await fetch(`https://api.modrinth.com/v2/search?limit=15&facets=[["project_type:${itemType}"]]${query}`);
           const data = await res.json();
           
           const mods: ModData[] = data.hits.map((hit: any) => ({
@@ -48,14 +51,20 @@ export default function ModBrowser({
             author: hit.author,
             summary: hit.description,
             icon: hit.icon_url || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + hit.project_id,
-            platform: 'modrinth'
+            platform: 'modrinth',
+            itemType: itemType
           }));
           
           setModrinthMods(mods);
         } else if (platform === 'curseforge') {
           const query = searchQuery ? `&searchFilter=${encodeURIComponent(searchQuery)}` : '';
-          // gameId 432 = Minecraft, classId 6 = Mods
-          const res = await fetch(`https://api.curse.tools/v1/cf/mods/search?gameId=432&classId=6&pageSize=15${query}`);
+          
+          let classId = 6; // mods
+          if (itemType === 'resourcepack') classId = 12;
+          if (itemType === 'shader') classId = 6552;
+          
+          // gameId 432 = Minecraft
+          const res = await fetch(`https://api.curse.tools/v1/cf/mods/search?gameId=432&classId=${classId}&pageSize=15${query}`);
           const data = await res.json();
           
           const mods: ModData[] = data.data.map((mod: any) => ({
@@ -64,7 +73,8 @@ export default function ModBrowser({
             author: mod.authors && mod.authors.length > 0 ? mod.authors[0].name : 'Unknown',
             summary: mod.summary,
             icon: (mod.logo && mod.logo.thumbnailUrl) ? mod.logo.thumbnailUrl : 'https://api.dicebear.com/7.x/identicon/svg?seed=' + mod.id,
-            platform: 'curseforge'
+            platform: 'curseforge',
+            itemType: itemType
           }));
           
           setCurseforgeMods(mods);
@@ -88,7 +98,11 @@ export default function ModBrowser({
       <div className="mod-drawer">
         <div className="mod-drawer-header">
           <div className="mod-drawer-title">
-            <h2>Mods hinzufügen</h2>
+            <h2>
+              {itemType === 'resourcepack' ? 'Ressourcenpakete hinzufügen' : 
+               itemType === 'shader' ? 'Shader-Pakete hinzufügen' : 
+               'Mods hinzufügen'}
+            </h2>
             <button className="close-btn" onClick={onClose}>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
