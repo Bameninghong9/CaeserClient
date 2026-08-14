@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { Home, UserCircle, Shirt } from 'lucide-react';
 import clsx from 'clsx';
+import Updater from './Updater';
 
 export default function Sidebar() {
   const navItems = [
@@ -10,7 +11,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <div className="w-[140px] bg-slate-900/40 border-r border-white/10 flex flex-col py-6 backdrop-blur-xl">
+    <div className="w-[140px] bg-slate-900/40 border-r border-white/10 flex flex-col pt-6 backdrop-blur-xl h-full">
       {navItems.map((item) => (
         <NavLink
           key={item.path}
@@ -26,6 +27,7 @@ export default function Sidebar() {
           {item.label}
         </NavLink>
       ))}
+      <Updater />
     </div>
   );
 }

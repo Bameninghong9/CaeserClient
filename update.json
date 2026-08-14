@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "notes": "Erste Version des Caeser Clients",
+  "pub_date": "2026-08-14T12:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "LEER",
+      "url": "https://github.com/Bameninghong9/CaeserClient/releases/download/v1.0.0/Caeser_Client_0.1.0_x64-setup.exe"
+    }
+  }
+}
