@@ -108,12 +108,11 @@ export default function Profiles() {
           modInfo: {
             id: 'P7dR8mSH',
             name: 'Fabric API',
-            icon_url: 'https://cdn.modrinth.com/data/P7dR8mSH/a868420658fa59d18c35d105b4b1988cc8b9ecf8.png',
+            icon: 'https://cdn.modrinth.com/data/P7dR8mSH/a868420658fa59d18c35d105b4b1988cc8b9ecf8.png',
             author: 'modmuss50',
-            description: 'Core API for the Fabric toolchain',
-            downloads: 0,
+            summary: 'Core API for the Fabric toolchain',
             platform: 'modrinth',
-            item_type: 'mod'
+            itemType: 'mod'
           },
           gameVersion: profile.version,
           loader: profile.loader.toLowerCase(),
