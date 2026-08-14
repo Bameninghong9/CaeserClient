@@ -11,7 +11,11 @@ pub mod profile_manager {
         pub version: String,
         pub loader: String,
         pub loader_version: Option<String>,
-        pub ram: f64,
+        pub ram: Option<f64>,
+        #[serde(rename = "playTime")]
+        pub play_time: Option<u64>,
+        #[serde(rename = "lastPlayed")]
+        pub last_played: Option<u64>,
     }
 
     #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -20,6 +24,7 @@ pub mod profile_manager {
         pub ram: Option<f64>,
         pub java_args: Option<String>,
         pub theme: Option<String>,
+        pub open_logs_after_start: Option<bool>,
     }
 
     impl Default for Settings {
@@ -29,6 +34,7 @@ pub mod profile_manager {
                 ram: Some(4096.0),
                 java_args: Some("-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions".to_string()),
                 theme: Some("dark".to_string()),
+                open_logs_after_start: Some(false),
             }
         }
     }

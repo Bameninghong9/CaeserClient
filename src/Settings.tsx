@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore, AppSettings } from './store';
-import { Save, Settings2, Monitor, Cpu } from 'lucide-react';
+import { Settings2, Monitor, Cpu } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const { setTheme } = useAppStore();
 
   useEffect(() => {
@@ -22,23 +21,16 @@ export default function Settings() {
         setLoading(false);
       });
   }, []);
-
-  const handleSave = async () => {
-    if (!settings) return;
-    setSaving(true);
-    try {
-      await invoke('save_settings', { settings });
+  useEffect(() => {
+    if (!settings || loading) return;
+    const timer = setTimeout(() => {
+      invoke('save_settings', { settings }).catch(console.error);
       if (settings.theme) {
         setTheme(settings.theme);
       }
-      toast.success('Einstellungen gespeichert!');
-    } catch (e) {
-      console.error(e);
-      toast.error('Fehler beim Speichern');
-    } finally {
-      setSaving(false);
-    }
-  };
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [settings, loading, setTheme]);
 
   if (loading || !settings) {
     return <div className="p-8 text-slate-400">Lade Einstellungen...</div>;
@@ -180,17 +172,6 @@ export default function Settings() {
           </div>
         </div>
 
-      </div>
-
-      <div className="mt-8 flex justify-end">
-        <button 
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-xl font-bold shadow-[0_4px_15px_rgba(59,130,246,0.3)] transition-all disabled:opacity-50"
-        >
-          {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={20} />}
-          {saving ? 'Speichere...' : 'Einstellungen speichern'}
-        </button>
       </div>
     </div>
   );
