@@ -2,13 +2,15 @@ import { useMemo } from 'react';
 
 export default function NeonParticles() {
   const particles = useMemo(() => {
-    return Array.from({ length: 60 }).map((_, i) => ({
+    const neonColors = ['#a855f7', '#ec4899', '#06b6d4', '#8b5cf6'];
+    return Array.from({ length: 80 }).map((_, i) => ({
       id: i,
       left: Math.random() * 100,
-      duration: Math.random() * 8 + 4, // 4s to 12s floating up
+      duration: Math.random() * 8 + 6, // 6s to 14s floating up
       delay: Math.random() * 10,
-      size: Math.random() * 4 + 2, // 2px to 6px
-      opacity: Math.random() * 0.6 + 0.2
+      size: Math.random() * 5 + 2, // 2px to 7px
+      opacity: Math.random() * 0.6 + 0.2,
+      color: neonColors[Math.floor(Math.random() * neonColors.length)]
     }));
   }, []);
 
@@ -24,7 +26,9 @@ export default function NeonParticles() {
             height: `${p.size}px`,
             animationDuration: `${p.duration}s`,
             animationDelay: `${p.delay}s`,
-            opacity: p.opacity
+            opacity: p.opacity,
+            background: p.color,
+            color: p.color // used for currentColor in box-shadow
           }}
         />
       ))}
