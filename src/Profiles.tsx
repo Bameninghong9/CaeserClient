@@ -955,6 +955,12 @@ export default function Profiles() {
                   <span>{p.version}</span>
                   <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
                   <span>{p.loader}</span>
+                  {p.lastPlayed && (
+                    <>
+                      <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+                      <span>{formatLastPlayed(p.lastPlayed)}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
