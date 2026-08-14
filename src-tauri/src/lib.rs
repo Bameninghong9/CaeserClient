@@ -81,27 +81,6 @@ async fn launch_game(
     let instance_id = uuid::Uuid::new_v4().simple().to_string();
     let counter = state.0.clone();
 
-    // Open log window
-    let window_label = "logs_window";
-    if let Some(win) = app.get_webview_window(window_label) {
-        let _ = win.show();
-        let _ = win.set_focus();
-    } else {
-        if let Err(e) = tauri::WebviewWindowBuilder::new(
-            &app,
-            window_label,
-            tauri::WebviewUrl::App("index.html?window=logs".into())
-        )
-        .title("Minecraft Logs")
-        .inner_size(1050.0, 700.0)
-        .decorations(false)
-        .transparent(false)
-        .center()
-        .build() {
-            println!("Failed to create log window: {}", e);
-        }
-    }
-
     let instance_id_clone = instance_id.clone();
     tauri::async_runtime::spawn(async move {
         // Delay to ensure the log window's React frontend has time to mount and register event listeners.
