@@ -43,4 +43,5 @@ flate2 = "1.1.9"
 zip = "8.6.0"
 futures = "0.3.33"
 sha1 = "0.11.0"
+discord-rich-presence = "1.1.0"
 

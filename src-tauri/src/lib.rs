@@ -61,6 +61,7 @@ async fn get_versions() -> Result<Vec<String>, String> {
 pub mod profile_manager;
 pub mod minecraft_launcher;
 pub mod skin_manager;
+pub mod discord_rpc;
 
 #[tauri::command]
 async fn launch_game(
@@ -481,6 +482,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .manage(InstanceCount::default())
+        .manage(discord_rpc::DiscordState(std::sync::Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             login, 
             get_versions, 
@@ -512,7 +514,9 @@ pub fn run() {
             skin_manager::get_local_skin_base64,
             skin_manager::get_user_skin_data,
             skin_manager::apply_skin,
-            check_mod_update
+            check_mod_update,
+            discord_rpc::set_discord_status,
+            discord_rpc::clear_discord_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

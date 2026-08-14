@@ -48,6 +48,43 @@ export default function Layout() {
   }, []);
 
   useEffect(() => {
+    const updateRpc = async () => {
+      try {
+        const settings: any = await invoke('get_settings');
+        if (settings && settings.enable_discord_rpc !== false) {
+          const count: number = await invoke('get_instance_count');
+          if (count > 0 && settings.last_played_profile) {
+            const profiles: any[] = await invoke('get_profiles');
+            const p = profiles.find((x: any) => x.name === settings.last_played_profile);
+            if (p) {
+              const playtime = p.playTime || 0;
+              const h = Math.floor(playtime / 3600);
+              const m = Math.floor((playtime % 3600) / 60);
+              const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+              
+              await invoke('set_discord_status', {
+                details: `Spielt ${p.version} (${p.loader || 'vanilla'})`,
+                stateStr: `Profil: ${p.name} | Spielzeit: ${timeStr}`,
+                startTimestamp: null
+              });
+            }
+          } else {
+            await invoke('clear_discord_status');
+          }
+        } else {
+          await invoke('clear_discord_status');
+        }
+      } catch (e) {
+        // ignore rpc errors
+      }
+    };
+    
+    updateRpc();
+    const interval = setInterval(updateRpc, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     const unlistenStart = listen('instance-started', () => {
       setRunningInstances(useAppStore.getState().runningInstances + 1);
     });

@@ -14,6 +14,7 @@ export interface AppSettings {
   java_args: string | null;
   theme: string | null;
   open_logs_after_start?: boolean | null;
+  enable_discord_rpc?: boolean | null;
 }
 
 interface AppState {

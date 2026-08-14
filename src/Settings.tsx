@@ -89,7 +89,7 @@ export default function Settings() {
             </div>
 
             <div>
-              <label className="flex items-center gap-3 cursor-pointer p-4 bg-slate-800/30 border border-slate-800 rounded-xl hover:border-slate-600 transition-all">
+              <label className="flex items-center gap-3 cursor-pointer p-4 bg-slate-800/30 border border-slate-800 rounded-xl hover:border-slate-600 transition-all mb-4">
                 <input
                   type="checkbox"
                   checked={settings.open_logs_after_start || false}
@@ -99,6 +99,25 @@ export default function Settings() {
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-white">Logs nach Start öffnen</span>
                   <span className="text-xs text-slate-500">Öffnet automatisch das Log-Fenster, wenn das Spiel gestartet wird.</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer p-4 bg-slate-800/30 border border-slate-800 rounded-xl hover:border-slate-600 transition-all">
+                <input
+                  type="checkbox"
+                  checked={settings.enable_discord_rpc ?? true}
+                  onChange={(e) => {
+                    const enabled = e.target.checked;
+                    setSettings({ ...settings, enable_discord_rpc: enabled });
+                    if (!enabled) {
+                      invoke('clear_discord_status').catch(console.error);
+                    }
+                  }}
+                  className="w-5 h-5 rounded border-slate-700 text-accent focus:ring-accent focus:ring-offset-slate-900 bg-slate-800"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-white">Discord Rich Presence</span>
+                  <span className="text-xs text-slate-500">Zeigt deinen aktuellen Launcher-Status in Discord an.</span>
                 </div>
               </label>
             </div>

@@ -25,6 +25,7 @@ pub mod profile_manager {
         pub java_args: Option<String>,
         pub theme: Option<String>,
         pub open_logs_after_start: Option<bool>,
+        pub enable_discord_rpc: Option<bool>,
     }
 
     impl Default for Settings {
@@ -35,6 +36,7 @@ pub mod profile_manager {
                 java_args: Some("-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions".to_string()),
                 theme: Some("dark".to_string()),
                 open_logs_after_start: Some(false),
+                enable_discord_rpc: Some(true),
             }
         }
     }
