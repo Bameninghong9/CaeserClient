@@ -314,12 +314,24 @@ pub async fn launch_minecraft(
     });
 
     let enc3 = shared_encoder.clone();
+    let start_time = std::time::Instant::now();
+    let p_name = profile_name.to_string();
     tauri::async_runtime::spawn(async move {
         let _ = child.wait();
+        let elapsed_secs = start_time.elapsed().as_secs();
         {
             let mut count = instance_counter.lock().unwrap_or_else(|e| e.into_inner());
             if *count > 0 { *count -= 1; }
         }
+        
+        // Emit stats
+        let now_unix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+        let _ = app.emit("profile-stats-updated", serde_json::json!({
+            "profile_name": p_name,
+            "playTimeToAdd": elapsed_secs,
+            "lastPlayed": now_unix
+        }));
+        
         let _ = app.emit("instance-stopped", serde_json::json!({ "instance_id": instance_id }));
         if let Ok(mut enc) = enc3.lock() {
             let _ = enc.try_finish();

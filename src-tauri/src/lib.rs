@@ -464,6 +464,36 @@ async fn get_installed_mods(profile_name: String) -> Result<InstalledModsRespons
     Ok(InstalledModsResponse { rich_mods, local_files })
 }
 
+fn get_dir_size(path: &std::path::Path) -> std::io::Result<u64> {
+    let mut size = 0;
+    if path.is_dir() {
+        for entry in std::fs::read_dir(path)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                size += get_dir_size(&path)?;
+            } else {
+                size += entry.metadata()?.len();
+            }
+        }
+    }
+    Ok(size)
+}
+
+#[tauri::command]
+async fn get_profile_size(profile_name: String) -> Result<u64, String> {
+    let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
+    let profile_dir = std::path::PathBuf::from(appdata)
+        .join("CaeserClient")
+        .join("profiles")
+        .join(&profile_name);
+    
+    match get_dir_size(&profile_dir) {
+        Ok(size) => Ok(size),
+        Err(_) => Ok(0)
+    }
+}
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -485,6 +515,7 @@ pub fn run() {
             open_log_window,
             exit_app,
             install_mod,
+            get_profile_size,
             profile_manager::profile_manager::get_profiles,
             profile_manager::profile_manager::save_profiles,
             profile_manager::profile_manager::get_settings,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ProfileWizard from './ProfileWizard';
 import { toast } from 'sonner';
+import { Clock, Hourglass } from 'lucide-react';
 import ModBrowser, { ModData } from './ModBrowser';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -15,6 +16,8 @@ export interface Profile {
   loader: string;
   loader_version?: string;
   ram?: number;
+  playTime?: number;
+  lastPlayed?: number;
 }
 
 export interface DependencyInfo {
@@ -49,6 +52,71 @@ export default function Profiles() {
   
   const [availableUpdates, setAvailableUpdates] = useState<Record<string, string>>({});
   const [installingMods, setInstallingMods] = useState<Set<string>>(new Set());
+  const [profileSize, setProfileSize] = useState<number | null>(null);
+
+  const formatLastPlayed = (timestamp?: number) => {
+    if (!timestamp) return 'Noch nie';
+    const diff = Math.floor((Date.now() - timestamp) / 1000);
+    if (diff < 60) return `vor ${diff}s`;
+    if (diff < 3600) return `vor ${Math.floor(diff / 60)}m`;
+    if (diff < 86400) return `vor ${Math.floor(diff / 3600)}h`;
+    return `vor ${Math.floor(diff / 86400)}d`;
+  };
+
+  const formatPlayTime = (seconds?: number) => {
+    if (!seconds) return '0h';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    const h = Math.floor(seconds / 3600);
+    const d = Math.floor(h / 24);
+    if (d > 0) {
+      return `${d}d ${h % 24}h`;
+    }
+    return `${h}h`;
+  };
+
+  useEffect(() => {
+    if (activeProfile) {
+      invoke('get_profile_size', { profileName: activeProfile.name })
+        .then(size => setProfileSize(size as number))
+        .catch(console.error);
+    } else {
+      setProfileSize(null);
+    }
+  }, [activeProfile]);
+
+  useEffect(() => {
+    const unlisten = listen('profile-stats-updated', (event: any) => {
+      const payload = event.payload;
+      setProfiles(prev => {
+        const updated = prev.map(p => {
+          if (p.name === payload.profile_name) {
+            return {
+              ...p,
+              playTime: (p.playTime || 0) + payload.playTimeToAdd,
+              lastPlayed: payload.lastPlayed
+            };
+          }
+          return p;
+        });
+        invoke('save_profiles', { profiles: updated }).catch(console.error);
+        return updated;
+      });
+      setActiveProfile(prev => {
+        if (prev && prev.name === payload.profile_name) {
+          return {
+            ...prev,
+            playTime: (prev.playTime || 0) + payload.playTimeToAdd,
+            lastPlayed: payload.lastPlayed
+          };
+        }
+        return prev;
+      });
+    });
+    
+    return () => {
+      unlisten.then(f => f());
+    };
+  }, []);
 
   useEffect(() => {
     if (resetTrigger !== undefined) {
@@ -441,6 +509,32 @@ export default function Profiles() {
             <button onClick={() => invoke('open_profile_folder', { profileName: activeProfile.name }).catch(console.error)} style={{ width: '46px', height: '46px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }} title="Profilordner öffnen">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
             </button>
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 24px', background: 'transparent', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px', minWidth: '180px' }}>
+            <Clock size={20} color="#a0aec0" />
+            <div>
+              <div style={{ fontSize: '10px', color: '#a0aec0', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Zuletzt Gespielt</div>
+              <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'white' }}>{formatLastPlayed(activeProfile.lastPlayed)}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 24px', background: 'transparent', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px', minWidth: '180px' }}>
+            <Hourglass size={20} color="#a0aec0" />
+            <div>
+              <div style={{ fontSize: '10px', color: '#a0aec0', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Spielzeit</div>
+              <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'white' }}>{formatPlayTime(activeProfile.playTime)}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 24px', background: 'transparent', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px', minWidth: '180px' }}>
+            <div>
+              <div style={{ fontSize: '10px', color: '#a0aec0', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '4px' }}>Speicher</div>
+              <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'white' }}>
+                {profileSize !== null ? `${(profileSize / (1024 * 1024)).toFixed(0)} MB` : 'Laden...'}
+              </div>
+            </div>
           </div>
         </div>
 
