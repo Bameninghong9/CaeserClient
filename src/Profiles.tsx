@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ProfileWizard from './ProfileWizard';
+import { toast } from 'sonner';
 import ModBrowser, { ModData } from './ModBrowser';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
