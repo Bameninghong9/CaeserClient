@@ -18,6 +18,7 @@ pub async fn launch_minecraft(
     username: &str,
     uuid: &str,
     access_token: &str,
+    java_args_str: &str,
     instance_counter: std::sync::Arc<std::sync::Mutex<u32>>,
 ) -> Result<(), String> {
     {
@@ -219,12 +220,13 @@ pub async fn launch_minecraft(
     // Performance & RAM optimizations (G1GC + Memory)
     let ram_mb = if ram <= 128 { ram * 1024 } else { ram };
     args.push(format!("-Xmx{}M", ram_mb));
-    args.push("-XX:+UnlockExperimentalVMOptions".to_string());
-    args.push("-XX:+UseG1GC".to_string());
-    args.push("-XX:G1NewSizePercent=20".to_string());
-    args.push("-XX:G1ReservePercent=20".to_string());
-    args.push("-XX:MaxGCPauseMillis=50".to_string());
-    args.push("-XX:G1HeapRegionSize=32M".to_string());
+    
+    // Add custom Java arguments
+    for arg in java_args_str.split_whitespace() {
+        if !arg.is_empty() {
+            args.push(arg.to_string());
+        }
+    }
 
     args.push("-cp".to_string());
     args.push(cp_string);

@@ -7,6 +7,7 @@ import { toast, Toaster } from 'sonner';
 import { useAppStore, Credentials } from '../store';
 import Titlebar from './Titlebar';
 import Sidebar from './Sidebar';
+import Raindrops from './Raindrops';
 
 export default function Layout() {
   const { 
@@ -15,7 +16,8 @@ export default function Layout() {
     setAccounts, 
     setActiveAccountId, 
     setActiveSkinUrl,
-    setRunningInstances 
+    setRunningInstances,
+    theme
   } = useAppStore();
 
   const activeCreds = accounts.find((a: Credentials) => a.id === activeAccountId) || null;
@@ -167,11 +169,23 @@ export default function Layout() {
     );
   }
 
+  const themeClass = theme === 'neon' 
+    ? "bg-slate-950 bg-[radial-gradient(circle_at_15%_50%,rgba(168,85,247,0.08)_0%,transparent_50%),radial-gradient(circle_at_85%_30%,rgba(236,72,153,0.08)_0%,transparent_50%)] text-white select-none"
+    : theme === 'ocean'
+    ? "bg-slate-950 bg-[radial-gradient(circle_at_15%_50%,rgba(8,145,178,0.08)_0%,transparent_50%),radial-gradient(circle_at_85%_30%,rgba(59,130,246,0.08)_0%,transparent_50%)] text-white select-none"
+    : theme === 'forest'
+    ? "bg-slate-950 bg-[radial-gradient(circle_at_15%_50%,rgba(5,150,105,0.08)_0%,transparent_50%),radial-gradient(circle_at_85%_30%,rgba(16,185,129,0.08)_0%,transparent_50%)] text-white select-none"
+    : "bg-background bg-[radial-gradient(circle_at_15%_50%,rgba(37,99,235,0.04)_0%,transparent_50%),radial-gradient(circle_at_85%_30%,rgba(59,130,246,0.04)_0%,transparent_50%)] text-white select-none";
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background bg-[radial-gradient(circle_at_15%_50%,rgba(37,99,235,0.04)_0%,transparent_50%),radial-gradient(circle_at_85%_30%,rgba(59,130,246,0.04)_0%,transparent_50%)] text-white select-none">
+    <div className={`flex flex-col h-screen overflow-hidden relative ${themeClass}`}>
+      {theme === 'ocean' && <Raindrops />}
       <Toaster theme="dark" position="bottom-right" />
-      <Titlebar onLogout={handleLogout} onLogin={handleLogin} onOpenLogs={handleOpenLogs} />
-      <div className="flex flex-1 overflow-hidden animate-in fade-in duration-500">
+      <div className="relative z-10 w-full flex-none">
+        <Titlebar onLogout={handleLogout} onLogin={handleLogin} onOpenLogs={handleOpenLogs} />
+      </div>
+      
+      <div className="flex flex-1 overflow-hidden relative z-10 animate-in fade-in duration-500">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-y-auto">
           <Outlet context={{ activeCreds }} />

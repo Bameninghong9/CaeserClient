@@ -8,6 +8,7 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
   const [version, setVersion] = useState(cachedVersions.length > 0 ? cachedVersions[0] : '');
   const [loader, setLoader] = useState('Vanilla');
   const [name, setName] = useState('');
+  const [overrideRam, setOverrideRam] = useState(false);
   const [ram, setRam] = useState(4096);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
         version,
         loader,
         loader_version: loader.toLowerCase() === 'fabric' ? '0.19.3' : undefined,
-        ram
+        ram: overrideRam ? ram : undefined
       });
     } else {
       setStep(step + 1);
@@ -44,15 +45,28 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
   };
 
   return (
-    <div className="wizard-modal">
-      <div className="wizard-modal-header">
-        <h2 style={{ fontSize: '14px', margin: 0, letterSpacing: '2px' }}>{getTitle()}</h2>
-        <button className="wizard-close-btn" onClick={onCancel}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <div style={{
+      background: '#0f172a',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: '12px',
+      width: '800px',
+      maxWidth: '90vw',
+      display: 'flex',
+      flexDirection: 'column',
+      boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+      overflow: 'hidden'
+    }}>
+      <div style={{ 
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' 
+      }}>
+        <h2 style={{ fontSize: '14px', margin: 0, letterSpacing: '2px', color: 'white', fontWeight: 'bold' }}>{getTitle()}</h2>
+        <button onClick={onCancel} style={{ background: 'transparent', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '5px' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
 
-      <div className="wizard-content" style={{ padding: '20px', border: 'none', background: 'transparent' }}>
+      <div style={{ padding: '30px', background: 'transparent' }}>
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -75,7 +89,7 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
             
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(4, 1fr)',
               gap: '15px',
               maxHeight: '400px',
               overflowY: 'auto',
@@ -191,48 +205,51 @@ export default function ProfileWizard({ cachedVersions, onComplete, onCancel }: 
               onChange={e => setName(e.target.value)} 
             />
             <div className="slider-container" style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ color: '#94a3b8', fontSize: '13px' }}>Empfohlen: 4096 MB</div>
-              <div style={{ color: 'white', fontSize: '15px', fontWeight: 'bold' }}>
-                {ram} MB ({ (ram / 1024).toFixed(1).replace('.0', '') } GB)
-              </div>
-              
-              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '12px', marginTop: '10px' }}>
-                <span>1 GB</span>
-                <span style={{ position: 'absolute', left: `calc(${(ram - 1024) / (16384 - 1024) * 100}% - 30px)`, textAlign: 'center', width: '60px' }}>
-                  {ram} MB
-                </span>
-                <span>16384 MB</span>
-              </div>
-              
-              <div className="range-slider-wrapper" style={{ position: 'relative', width: '100%', marginTop: '5px' }}>
-                <div style={{
-                  position: 'absolute',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  height: '4px',
-                  background: '#3b82f6',
-                  width: `${(ram - 1024) / (16384 - 1024) * 100}%`,
-                  zIndex: 1,
-                  pointerEvents: 'none'
-                }}></div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: 'white', fontSize: '14px' }}>
                 <input 
-                  type="range" 
-                  min="1024" 
-                  max="16384" 
-                  step="512"
-                  value={ram} 
-                  onChange={e => setRam(parseInt(e.target.value))} 
-                  className="range-slider"
+                  type="checkbox" 
+                  checked={overrideRam} 
+                  onChange={e => setOverrideRam(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: '#3b82f6' }}
                 />
-              </div>
+                Globalen Arbeitsspeicher (RAM) überschreiben
+              </label>
+
+              {overrideRam && (
+                <div style={{ marginTop: '10px', animation: 'fadeIn 0.3s ease-out' }}>
+                  <div style={{ color: 'white', fontSize: '15px', fontWeight: 'bold' }}>
+                    {ram} MB ({ (ram / 1024).toFixed(1).replace('.0', '') } GB)
+                  </div>
+                  
+                  <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '12px', marginTop: '10px' }}>
+                    <span>1 GB</span>
+                    <span style={{ position: 'absolute', left: `calc(${(ram - 1024) / (16384 - 1024) * 100}% - 30px)`, textAlign: 'center', width: '60px' }}>
+                      {ram} MB
+                    </span>
+                    <span>16384 MB</span>
+                  </div>
+                  
+                  <div className="range-slider-wrapper" style={{ width: '100%', marginTop: '5px' }}>
+                    <input 
+                      type="range" 
+                      min="1024" 
+                      max="16384" 
+                      step="512"
+                      value={ram} 
+                      onChange={e => setRam(parseInt(e.target.value))} 
+                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
       </div>
 
-      <div className="wizard-actions" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '15px 20px', margin: 0 }}>
+      <div className="wizard-actions" style={{ display: 'flex', justifyContent: step > 1 ? 'space-between' : 'flex-end', width: '100%', borderTop: '1px solid rgba(255,255,255,0.05)', padding: '15px 20px', margin: 0 }}>
         {step > 1 && (
-          <button className="btn" style={{ background: 'transparent', color: 'white', border: '1px solid var(--glass-border)', marginRight: 'auto' }} onClick={() => setStep(step - 1)}>
+          <button className="btn" style={{ background: 'transparent', color: 'white', border: '1px solid var(--glass-border)' }} onClick={() => setStep(step - 1)}>
             ZURÜCK
           </button>
         )}

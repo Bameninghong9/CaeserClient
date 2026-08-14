@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useOutletContext } from 'react-router-dom';
 import { ChevronDown, Play } from 'lucide-react';
-import { Credentials } from './store';
+import { Credentials, AppSettings, useAppStore } from './store';
 import { Profile } from './Profiles';
 import { toast } from 'sonner';
 
@@ -13,16 +13,23 @@ export default function Home() {
   const [launching, setLaunching] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const { theme, setTheme } = useAppStore();
 
   useEffect(() => {
     Promise.all([
       invoke<Profile[]>('get_profiles'),
       invoke<{ last_played_profile: string | null }>('get_settings')
     ])
-      .then(([p, settings]) => {
+      .then(([p, settingsRes]) => {
+        const s = settingsRes as unknown as AppSettings;
         setProfiles(p);
-        if (settings.last_played_profile && p.find(x => x.id === settings.last_played_profile)) {
-          setSelectedProfileId(settings.last_played_profile);
+        setSettings(s);
+        if (s.theme) {
+          setTheme(s.theme);
+        }
+        if (s.last_played_profile && p.find(x => x.id === s.last_played_profile)) {
+          setSelectedProfileId(s.last_played_profile);
         } else if (p.length > 0) {
           setSelectedProfileId(p[0].id);
         }
@@ -31,8 +38,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (selectedProfileId) {
-      invoke('save_settings', { settings: { last_played_profile: selectedProfileId } }).catch(console.error);
+    if (selectedProfileId && settings) {
+      invoke('save_settings', { settings: { ...settings, last_played_profile: selectedProfileId } }).catch(console.error);
     }
   }, [selectedProfileId]);
 
@@ -56,7 +63,8 @@ export default function Home() {
         loader: selectedProfile.loader || "vanilla",
         loaderVersion: selectedProfile.loader_version || "",
         profileName: selectedProfile.name,
-        ram: selectedProfile.ram || 2048,
+        ram: selectedProfile.ram || settings?.ram || 4096,
+        javaArgs: settings?.java_args || "-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions",
         creds: activeCreds 
       });
       setProgress(100);
@@ -83,7 +91,12 @@ export default function Home() {
           
           <button 
             className={`flex-1 relative flex flex-col justify-center items-center p-0 transition-all duration-300 ${
-              launching || !selectedProfile ? 'bg-slate-800 cursor-not-allowed' : 'bg-accent-gradient hover:bg-accent-gradient-hover cursor-pointer'
+              launching || !selectedProfile 
+                ? 'bg-slate-800 cursor-not-allowed' 
+                : theme === 'neon' ? 'bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 cursor-pointer shadow-[0_0_20px_rgba(168,85,247,0.4)]'
+                : theme === 'ocean' ? 'bg-gradient-to-r from-cyan-600 to-blue-500 hover:from-cyan-500 hover:to-blue-400 cursor-pointer shadow-[0_0_20px_rgba(8,145,178,0.4)]'
+                : theme === 'forest' ? 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 cursor-pointer shadow-[0_0_20px_rgba(5,150,105,0.4)]'
+                : 'bg-accent-gradient hover:bg-accent-gradient-hover cursor-pointer'
             }`}
             onClick={handlePlay}
             disabled={launching || !selectedProfile}
@@ -107,7 +120,12 @@ export default function Home() {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             disabled={launching}
             className={`w-[65px] flex justify-center items-center text-white transition-all duration-300 ${
-              launching ? 'bg-slate-800 cursor-not-allowed' : 'bg-accent-gradient hover:bg-accent-gradient-hover cursor-pointer'
+              launching 
+                ? 'bg-slate-800 cursor-not-allowed' 
+                : theme === 'neon' ? 'bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 cursor-pointer shadow-[0_0_20px_rgba(236,72,153,0.4)]'
+                : theme === 'ocean' ? 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 cursor-pointer shadow-[0_0_20px_rgba(59,130,246,0.4)]'
+                : theme === 'forest' ? 'bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 cursor-pointer shadow-[0_0_20px_rgba(20,184,166,0.4)]'
+                : 'bg-accent-gradient hover:bg-accent-gradient-hover cursor-pointer'
             }`}
           >
             <ChevronDown size={24} className={`transition-transform duration-300 ${dropdownOpen ? 'rotate-180' : ''}`} />

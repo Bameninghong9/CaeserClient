@@ -1,25 +1,31 @@
 import { NavLink } from 'react-router-dom';
-import { Home, UserCircle, Shirt } from 'lucide-react';
+import { Home, UserCircle, Shirt, Settings as SettingsIcon } from 'lucide-react';
 import clsx from 'clsx';
 import Updater from './Updater';
+import { useAppStore } from '../store';
 
 export default function Sidebar() {
+  const { theme } = useAppStore();
   const navItems = [
-    { path: '/', label: 'Home', icon: <Home size={20} /> },
-    { path: '/profiles', label: 'Profile', icon: <UserCircle size={20} /> },
-    { path: '/skins', label: 'Skins', icon: <Shirt size={20} /> },
+    { path: '/', label: 'Home', icon: <Home size={20} className="shrink-0" /> },
+    { path: '/profiles', label: 'Profile', icon: <UserCircle size={20} className="shrink-0" /> },
+    { path: '/skins', label: 'Skins', icon: <Shirt size={20} className="shrink-0" /> },
+    { path: '/settings', label: 'Settings', icon: <SettingsIcon size={20} className="shrink-0" /> },
   ];
 
   return (
-    <div className="w-[140px] bg-slate-900/40 border-r border-white/10 flex flex-col pt-6 backdrop-blur-xl h-full">
+    <div className="w-[160px] bg-slate-900/40 border-r border-white/10 flex flex-col pt-6 backdrop-blur-xl h-full shrink-0">
       {navItems.map((item) => (
         <NavLink
           key={item.path}
           to={item.path}
           className={({ isActive }) => clsx(
-            "px-5 py-3 flex items-center gap-3 font-medium mx-3 my-1 rounded-lg text-sm transition-all duration-300",
+            "px-4 py-3 flex items-center gap-3 font-medium mx-3 my-1 rounded-lg text-sm transition-all duration-300",
             isActive 
-              ? "bg-accent text-white shadow-[0_4px_15px_rgba(59,130,246,0.3)]" 
+              ? theme === 'neon' ? "bg-purple-600 text-white shadow-[0_4px_15px_rgba(168,85,247,0.4)]"
+              : theme === 'ocean' ? "bg-cyan-600 text-white shadow-[0_4px_15px_rgba(8,145,178,0.4)]"
+              : theme === 'forest' ? "bg-emerald-600 text-white shadow-[0_4px_15px_rgba(5,150,105,0.4)]"
+              : "bg-accent text-white shadow-[0_4px_15px_rgba(59,130,246,0.3)]"
               : "text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-0.5"
           )}
         >

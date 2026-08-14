@@ -70,6 +70,7 @@ async fn launch_game(
     loader_version: String, 
     profile_name: String,
     ram: u32,
+    java_args: String,
     creds: serde_json::Value,
     state: tauri::State<'_, InstanceCount>,
 ) -> Result<(), String> {
@@ -106,7 +107,7 @@ async fn launch_game(
         // Delay to ensure the log window's React frontend has time to mount and register event listeners.
         tokio::time::sleep(std::time::Duration::from_millis(800)).await;
 
-        if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), instance_id_clone, &version, &loader, &loader_version, &profile_name, ram, &username, &uuid, &access_token, counter).await {
+        if let Err(e) = minecraft_launcher::launch_minecraft(app.clone(), instance_id_clone, &version, &loader, &loader_version, &profile_name, ram, &username, &uuid, &access_token, &java_args, counter).await {
             let _ = app.emit("game-log", serde_json::json!({
                 "instance_id": "ERROR",
                 "line": format!("[ERROR] Failed to launch: {}", e)

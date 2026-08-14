@@ -14,9 +14,23 @@ pub mod profile_manager {
         pub ram: f64,
     }
 
-    #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+    #[derive(Serialize, Deserialize, Clone, Debug)]
     pub struct Settings {
         pub last_played_profile: Option<String>,
+        pub ram: Option<f64>,
+        pub java_args: Option<String>,
+        pub theme: Option<String>,
+    }
+
+    impl Default for Settings {
+        fn default() -> Self {
+            Self {
+                last_played_profile: None,
+                ram: Some(4096.0),
+                java_args: Some("-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions".to_string()),
+                theme: Some("dark".to_string()),
+            }
+        }
     }
 
     fn get_app_dir() -> Result<std::path::PathBuf, String> {

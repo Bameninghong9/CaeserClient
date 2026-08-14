@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Home from './Home';
 import Profiles from './Profiles';
 import Skins from './Skins';
+import Settings from './Settings';
 
 const router = createMemoryRouter([
   {
@@ -20,6 +21,10 @@ const router = createMemoryRouter([
       {
         path: 'skins',
         element: <Skins />
+      },
+      {
+        path: 'settings',
+        element: <Settings />
       }
     ]
   }

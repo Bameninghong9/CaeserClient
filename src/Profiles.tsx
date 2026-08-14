@@ -13,7 +13,7 @@ export interface Profile {
   version: string;
   loader: string;
   loader_version?: string;
-  ram: number;
+  ram?: number;
 }
 
 export interface DependencyInfo {
@@ -31,6 +31,7 @@ export default function Profiles() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showWizard, setShowWizard] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
   
   // State for installed mods (ID -> ModData)
   const [installedMods, setInstalledMods] = useState<Record<string, ModData>>({});
@@ -82,6 +83,10 @@ export default function Profiles() {
         setCachedVersions(filtered);
       })
       .catch(e => console.error("Failed to preload versions:", e));
+      
+    invoke('get_settings')
+      .then(s => setSettings(s))
+      .catch(e => console.error("Failed to get settings", e));
   }, []);
 
   const handleCreateProfile = (profile: Profile) => {
@@ -107,7 +112,8 @@ export default function Profiles() {
         loader: profile.loader || "vanilla",
         loaderVersion: profile.loader_version || "0.16.2",
         profileName: profile.name,
-        ram: profile.ram || 2,
+        ram: profile.ram || settings?.ram || 4096,
+        javaArgs: settings?.java_args || "-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions",
         creds: activeCreds
       });
     } catch (e) {
@@ -395,7 +401,7 @@ export default function Profiles() {
               <div style={{ display: 'flex', gap: '20px', fontSize: '12px', color: '#a0aec0', marginTop: '10px', fontWeight: 600 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {activeProfile.version}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg> {activeProfile.loader}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg> {(activeProfile.ram / 1024).toFixed(1).replace('.0', '')} GB RAM</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg> {activeProfile.ram ? `${(activeProfile.ram / 1024).toFixed(1).replace('.0', '')} GB RAM` : 'Globaler RAM'}</span>
               </div>
             </div>
           </div>
@@ -898,10 +904,19 @@ export default function Profiles() {
         ))}
       </div>
 
-      {showWizard && (
-        <div className="custom-modal-overlay">
+      {showWizard && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
           <ProfileWizard cachedVersions={cachedVersions} onComplete={handleCreateProfile} onCancel={() => setShowWizard(false)} />
-        </div>
+        </div>,
+        document.body
       )}
 
       {deleteProfileId && createPortal(
