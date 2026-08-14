@@ -498,7 +498,8 @@ pub fn run() {
             skin_manager::update_local_skin,
             skin_manager::get_local_skin_base64,
             skin_manager::get_user_skin_data,
-            skin_manager::apply_skin
+            skin_manager::apply_skin,
+            check_mod_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -589,4 +590,62 @@ async fn delete_mod_file(profile_name: String, file_name: String, mod_id: Option
         }
     }
     Ok(())
+}
+
+#[tauri::command]
+async fn check_mod_update(
+    mod_info: ModData,
+    game_version: String,
+    loader: String,
+) -> Result<Option<String>, String> {
+    let loader_lower = loader.to_lowercase();
+    let mod_id = &mod_info.id;
+    let platform = &mod_info.platform;
+    
+    if platform == "modrinth" {
+        let url = format!(
+            "https://api.modrinth.com/v2/project/{}/version?loaders=[\"{}\"]&game_versions=[\"{}\"]",
+            mod_id, loader_lower, game_version
+        );
+        
+        let client = reqwest::Client::new();
+        let res = client.get(&url).send().await.map_err(|e| e.to_string())?;
+        let versions: Vec<ModrinthVersion> = res.json().await.map_err(|e| e.to_string())?;
+        
+        if let Some(latest_version) = versions.into_iter().next() {
+            if let Some(installed_version) = &mod_info.version {
+                if latest_version.version_number != *installed_version {
+                    return Ok(Some(latest_version.version_number));
+                }
+            }
+        }
+        Ok(None)
+    } else if platform == "curseforge" {
+        let loader_id = match loader_lower.as_str() {
+            "forge" => 1,
+            "fabric" => 4,
+            "quilt" => 5,
+            "neoforge" => 6,
+            _ => 0,
+        };
+        
+        let url = format!(
+            "https://api.curse.tools/v1/cf/mods/{}/files?gameVersion={}&modLoaderType={}",
+            mod_id, game_version, loader_id
+        );
+        let client = reqwest::Client::new();
+        let res = client.get(&url).send().await.map_err(|e| e.to_string())?;
+        let response: CurseForgeFileResponse = res.json().await.map_err(|e| e.to_string())?;
+        
+        if let Some(latest_file) = response.data.into_iter().next() {
+            if let Some(installed_version) = &mod_info.version {
+                if latest_file.display_name != *installed_version {
+                    return Ok(Some(latest_file.display_name));
+                }
+            }
+        }
+        Ok(None)
+    } else {
+        Ok(None)
+    }
 }
