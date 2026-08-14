@@ -13,6 +13,7 @@ export interface AppSettings {
   ram: number | null;
   java_args: string | null;
   theme: string | null;
+  open_logs_after_start?: boolean | null;
 }
 
 interface AppState {

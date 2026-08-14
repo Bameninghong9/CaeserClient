@@ -54,9 +54,16 @@ export default function Profiles() {
   const [installingMods, setInstallingMods] = useState<Set<string>>(new Set());
   const [profileSize, setProfileSize] = useState<number | null>(null);
 
+  // Force re-render for relative times
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const formatLastPlayed = (timestamp?: number) => {
     if (!timestamp) return 'Noch nie';
-    const diff = Math.floor((Date.now() - timestamp) / 1000);
+    const diff = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
     if (diff < 60) return `vor ${diff}s`;
     if (diff < 3600) return `vor ${Math.floor(diff / 60)}m`;
     if (diff < 86400) return `vor ${Math.floor(diff / 3600)}h`;
@@ -201,6 +208,11 @@ export default function Profiles() {
 
   const launchProfile = async (profile: Profile) => {
     setIsLaunching(true);
+    
+    if (settings?.open_logs_after_start) {
+      invoke('open_log_window').catch(console.error);
+    }
+    
     try {
       await invoke('launch_game', {
         version: profile.version,

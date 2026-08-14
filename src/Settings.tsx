@@ -95,6 +95,21 @@ export default function Settings() {
               />
               <p className="text-xs text-slate-500 mt-2">Fortgeschrittene Startparameter für Java. Leer lassen für Standard-Werte.</p>
             </div>
+
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer p-4 bg-slate-800/30 border border-slate-800 rounded-xl hover:border-slate-600 transition-all">
+                <input
+                  type="checkbox"
+                  checked={settings.open_logs_after_start || false}
+                  onChange={(e) => setSettings({ ...settings, open_logs_after_start: e.target.checked })}
+                  className="w-5 h-5 rounded border-slate-700 text-accent focus:ring-accent focus:ring-offset-slate-900 bg-slate-800"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-white">Logs nach Start öffnen</span>
+                  <span className="text-xs text-slate-500">Öffnet automatisch das Log-Fenster, wenn das Spiel gestartet wird.</span>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
 
