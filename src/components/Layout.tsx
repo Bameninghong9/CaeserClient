@@ -53,34 +53,43 @@ export default function Layout() {
         const settings: any = await invoke('get_settings');
         if (settings && settings.enable_discord_rpc !== false) {
           const count: number = await invoke('get_instance_count');
-          if (count > 0 && settings.last_played_profile) {
-            const profiles: any[] = await invoke('get_profiles');
-            const p = profiles.find((x: any) => x.name === settings.last_played_profile);
-            if (p) {
-              const playtime = p.playTime || 0;
-              const h = Math.floor(playtime / 3600);
-              const m = Math.floor((playtime % 3600) / 60);
-              const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
-              
-              await invoke('set_discord_status', {
-                details: `Spielt ${p.version} (${p.loader || 'vanilla'})`,
-                stateStr: `Profil: ${p.name} | Spielzeit: ${timeStr}`,
-                startTimestamp: null
-              });
-            }
+          const profiles: any[] = await invoke('get_profiles');
+          const p = profiles.find((x: any) => x.name === settings.last_played_profile) || profiles[0];
+          
+          if (count > 0 && p) {
+            const playtime = p.playTime || 0;
+            const h = Math.floor(playtime / 3600);
+            const m = Math.floor((playtime % 3600) / 60);
+            const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+            
+            await invoke('set_discord_status', {
+              details: `Spielt ${p.version} (${p.loader || 'vanilla'})`,
+              stateStr: `Profil: ${p.name} | Spielzeit: ${timeStr}`,
+              startTimestamp: null
+            });
+          } else if (p) {
+            await invoke('set_discord_status', {
+              details: `Im Launcher`,
+              stateStr: `Wählt ein Profil...`,
+              startTimestamp: null
+            });
           } else {
-            await invoke('clear_discord_status');
+            await invoke('set_discord_status', {
+              details: `Im Launcher`,
+              stateStr: `Richtet den Client ein`,
+              startTimestamp: null
+            });
           }
         } else {
           await invoke('clear_discord_status');
         }
       } catch (e) {
-        // ignore rpc errors
+        console.error("RPC Error:", e);
       }
     };
     
     updateRpc();
-    const interval = setInterval(updateRpc, 10000);
+    const interval = setInterval(updateRpc, 5000);
     return () => clearInterval(interval);
   }, []);
 

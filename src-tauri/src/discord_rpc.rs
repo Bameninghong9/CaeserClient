@@ -12,12 +12,14 @@ pub fn set_discord_status(state: State<'_, DiscordState>, details: String, state
     
     // If not connected, try to connect
     if client_lock.is_none() {
+        println!("Attempting to connect to Discord IPC...");
         let mut new_client = DiscordIpcClient::new(CLIENT_ID);
-        if new_client.connect().is_ok() {
-            *client_lock = Some(new_client);
-        } else {
+        if let Err(e) = new_client.connect() {
+            println!("Failed to connect to Discord IPC: {:?}", e);
             return Err("Failed to connect to Discord IPC".to_string());
         }
+        println!("Successfully connected to Discord IPC!");
+        *client_lock = Some(new_client);
     }
 
     if let Some(client) = client_lock.as_mut() {
