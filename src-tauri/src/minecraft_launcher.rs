@@ -50,6 +50,17 @@ pub async fn launch_minecraft(
     let mods_dir = profile_dir.join("mods");
     fs::create_dir_all(&mods_dir).map_err(|e| e.to_string())?;
 
+    if version == "1.21.11" && loader.to_lowercase() == "fabric" {
+        emit_log(&app, &instance_id, "[INFO] Injecting CaeserModClient for 1.21.11...".to_string());
+        let mod_path = mods_dir.join("caeser-client-1.0.0.jar");
+        let mod_bytes = include_bytes!("../mods/caeser-client-1.0.0.jar");
+        if let Err(e) = fs::write(&mod_path, mod_bytes) {
+            emit_log(&app, &instance_id, format!("[WARN] Failed to write bundled mod: {}", e));
+        } else {
+            emit_log(&app, &instance_id, "[INFO] Successfully injected CaeserModClient.".to_string());
+        }
+    }
+
     emit_log(&app, &instance_id, format!("[INFO] Resolving version {} (Loader: {})...", version, loader));
 
     // 1. Fetch version manifest

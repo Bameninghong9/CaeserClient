@@ -8,6 +8,8 @@ import { useAppStore, Credentials } from '../store';
 import Titlebar from './Titlebar';
 import Sidebar from './Sidebar';
 import Raindrops from './Raindrops';
+import ForestLeaves from './ForestLeaves';
+import NeonParticles from './NeonParticles';
 
 export default function Layout() {
   const { 
@@ -180,6 +182,8 @@ export default function Layout() {
   return (
     <div className={`flex flex-col h-screen overflow-hidden relative ${themeClass}`}>
       {theme === 'ocean' && <Raindrops />}
+      {theme === 'forest' && <ForestLeaves />}
+      {theme === 'neon' && <NeonParticles />}
       <Toaster theme="dark" position="bottom-right" />
       <div className="relative z-10 w-full flex-none">
         <Titlebar onLogout={handleLogout} onLogin={handleLogin} onOpenLogs={handleOpenLogs} />

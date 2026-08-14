@@ -89,14 +89,41 @@ export default function Profiles() {
       .catch(e => console.error("Failed to get settings", e));
   }, []);
 
-  const handleCreateProfile = (profile: Profile) => {
+  const handleCreateProfile = async (profile: Profile) => {
     const updatedProfiles = [...profiles, profile];
     setProfiles(updatedProfiles);
-    setShowWizard(false);
     
-    // Save to backend
-    invoke('save_profiles', { profiles: updatedProfiles })
-      .catch(e => console.error("Failed to save profiles:", e));
+    try {
+      await invoke('save_profiles', { profiles: updatedProfiles });
+    } catch(e) {
+      console.error("Failed to save profiles:", e);
+    }
+    
+    setShowWizard(false);
+
+    if (profile.loader.toLowerCase() === 'fabric') {
+      try {
+        await invoke('install_mod', {
+          modInfo: {
+            id: 'P7dR8mSH',
+            name: 'Fabric API',
+            icon_url: 'https://cdn.modrinth.com/data/P7dR8mSH/a868420658fa59d18c35d105b4b1988cc8b9ecf8.png',
+            author: 'modmuss50',
+            description: 'Core API for the Fabric toolchain',
+            downloads: 0,
+            platform: 'modrinth',
+            item_type: 'mod'
+          },
+          gameVersion: profile.version,
+          loader: profile.loader.toLowerCase(),
+          profileName: profile.name
+        });
+        toast.success("Fabric API wurde automatisch installiert.");
+      } catch (e) {
+        console.error("Failed to auto-install Fabric API", e);
+        toast.error("Konnte Fabric API nicht automatisch installieren.");
+      }
+    }
   };
 
   const handleDeleteProfile = (e: React.MouseEvent, id: string) => {

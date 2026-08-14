@@ -65,7 +65,11 @@ export default function Titlebar({
             <span className="text-sm font-semibold flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{activeCreds.username}</span>
             
             {dropdownOpen && (
-              <div className="absolute top-[45px] -right-[1px] w-64 bg-surface border border-white/10 rounded-b-lg flex flex-col z-50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div 
+                className="absolute top-[45px] -right-[1px] w-64 border border-white/10 rounded-b-lg flex flex-col z-50 shadow-2xl" 
+                style={{ backgroundColor: '#0f172a' }}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {accounts.map((acc: any) => (
                   <div 
                     key={acc.id} 
