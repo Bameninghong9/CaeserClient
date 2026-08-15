@@ -78,12 +78,12 @@ export default function Titlebar({
                   >
                     <img src={`https://minotar.net/helm/${acc.id}/100.png`} alt="Avatar" className="w-6 h-6 rounded-md border border-accent" style={{ imageRendering: 'pixelated' }} />
                     <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm">{acc.username}</span>
-                    <button className="text-danger hover:bg-danger/10 p-1 rounded transition-colors" onMouseDown={(e) => { e.stopPropagation(); setDeleteAccountId(acc.id); }} onClick={(e) => e.stopPropagation()} title="Remove Account">
+                    <button className="text-danger hover:bg-danger/10 p-1 rounded transition-colors" onClick={(e) => { e.stopPropagation(); setDeleteAccountId(acc.id); }} title="Remove Account">
                       <Trash2 size={16} />
                     </button>
                   </div>
                 ))}
-                <div className="px-4 py-3 flex items-center gap-3 cursor-pointer text-accent hover:bg-white/5" onMouseDown={(e) => { e.stopPropagation(); onLogin(); setDropdownOpen(false); }} onClick={(e) => e.stopPropagation()}>
+                <div className="px-4 py-3 flex items-center gap-3 cursor-pointer text-accent hover:bg-white/5" onClick={(e) => { e.stopPropagation(); onLogin(); setDropdownOpen(false); }}>
                   <Plus size={16} />
                   <span className="text-sm font-medium">Add Account</span>
                 </div>
