@@ -231,7 +231,7 @@ export default function Layout() {
       {theme === 'forest' && <ForestLeaves />}
       {theme === 'neon' && <NeonParticles />}
       <Toaster theme="dark" position="bottom-right" />
-      <div className="relative z-10 w-full flex-none">
+      <div className="relative z-50 w-full flex-none">
         <Titlebar onLogout={handleLogout} onLogin={handleLogin} onOpenLogs={handleOpenLogs} />
       </div>
       
